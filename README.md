@@ -74,7 +74,7 @@ DARTnet uses **two Conda environments**:
 | Environment | Purpose |
 |-------------|---------|
 | `DARTnet` | Training / inference (graphs, Morgan fingerprints, model) |
-| `MolTran_CUDA11` | MoLFormer embedding extraction (called as a subprocess) |
+| `MolTran_CUDA11` | **(Optional)** MoLFormer embedding extraction (subprocess) |
 
 Check CUDA first:
 
@@ -136,15 +136,26 @@ Quick check:
 python -c "import torch, torch_geometric, pytorch_lightning, rdkit, ogb; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-### 2️⃣ MolTran_CUDA11 environment (embedding extraction)
+### 2️⃣ MolTran_CUDA11 environment (embedding extraction) — **optional**
 
-MoLFormer embeddings are generated in a **separate** env (historical notebook stack), then loaded by DARTnet.
+> **You can skip this environment** if you use the **precomputed MoLFormer embeddings** shipped with the example dataset:
+>
+> ```text
+> dataset_HCV/train_emb.pt
+> dataset_HCV/val_emb.pt
+> dataset_HCV/test_emb.pt
+> ```
+>
+> (Inference CSVs also include matching `*_emb.pt` files, e.g. `S5_validated_test_set_1118_unique_20260129_emb.pt`.)  
+> With these files present, training/inference in the `DARTnet` env alone is enough — DARTnet will **not** call MolTran.
+
+Install `MolTran_CUDA11` only when you need to **generate embeddings for new SMILES / new datasets** (missing `*_emb.pt`):
 
 1. Create a Conda env named `MolTran_CUDA11` following [IBM MoLFormer](https://github.com/IBM/molformer) (Python 3.8 + older PyTorch / Lightning stack).
-2. Keep DARTnet as the active env for training/inference.
-3. Pass `--molformer-env MolTran_CUDA11`; `preprocessing/extract_embeddings.py` will launch a subprocess in that env.
+2. Keep `DARTnet` as the active env for training/inference.
+3. Pass `--molformer-env MolTran_CUDA11` (and `--molformer-ckpt-path` if needed); `preprocessing/extract_embeddings.py` launches a subprocess in that env.
 
-Bundled under this repo (no extra download needed for defaults):
+Bundled assets for on-the-fly embedding generation:
 
 - `preprocessing/molformer/` — MoLFormer inference code + `hparams.yaml`
 - `preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt` — pretrained weights (Git LFS)
@@ -154,7 +165,10 @@ Bundled under this repo (no extra download needed for defaults):
 <a id="pretrained-models"></a>
 ## 📦 Pretrained models and external dependencies
 
-### 📌 MoLFormer checkpoint (required)
+### 📌 MoLFormer checkpoint
+
+**Optional** when using precomputed embeddings under `dataset_HCV/` (`train_emb.pt` / `val_emb.pt` / `test_emb.pt`, etc.).  
+**Required** only if you regenerate embeddings for new molecules.
 
 Default path (shipped in this repo via Git LFS):
 
@@ -223,7 +237,9 @@ conda activate DARTnet
 | `train_set.csv` | Training set | 1,709 |
 | `val_set.csv` | Validation set | 408 |
 | `test_set.csv` | Test set | 507 |
+| `train_emb.pt` / `val_emb.pt` / `test_emb.pt` | **Precomputed** MoLFormer embeddings (skip MolTran) | — |
 | `S5_validated_test_set_1118_unique*.csv` | Wet-lab validated molecules (inference) | 18 |
+| `S5_*_emb.pt` | Precomputed embeddings for the inference CSVs | — |
 | `FDA_smiles_2349_20251022.csv` | FDA-approved drug SMILES (optional screening) | 2,349 |
 
 ### Training CSV format
@@ -449,7 +465,7 @@ A: Delete all `DEL_*_emb.pt` and `*_emb.pt` caches in that directory and rerun.
 A: Pass `--molformer-ckpt-path` pointing to the MoLFormer pretrained weights.
 
 **Q: Cannot find Python for the MolTran environment?**  
-A: Confirm `MolTran_CUDA11` is installed, or set the correct name with `--molformer-env`. See path search logic in `preprocessing/extract_embeddings.py`.
+A: For the example `dataset_HCV/` run you can skip MolTran if `*_emb.pt` files are present. Install / set `--molformer-env` only when regenerating embeddings for new data. See `preprocessing/extract_embeddings.py`.
 
 **Q: Out of GPU memory?**  
 A: Try a smaller `--batch-size` (e.g. 16). Embedding extraction also depends on MoLFormer model size.
