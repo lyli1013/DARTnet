@@ -74,7 +74,7 @@ DARTnet uses **two Conda environments**:
 | Environment | Purpose |
 |-------------|---------|
 | `DARTnet` | Training / inference (graphs, Morgan fingerprints, model) |
-| `MolTran_CUDA11` | **(Optional)** MoLFormer embedding extraction (subprocess) |
+| `MolTran_CUDA11` **(Optional)** | MoLFormer embedding extraction (subprocess) |
 
 Check CUDA first:
 
