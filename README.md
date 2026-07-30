@@ -25,7 +25,6 @@ DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperfo
 - [🧪 Data format and preprocessing](#data-format-and-preprocessing)
 - [🚀 Training](#training)
 - [🔮 Inference](#inference)
-- [❓ FAQ](#faq)
 - [📚 Citation and acknowledgements](#citation-and-acknowledgements)
 - [☎️ Contact us](#contact-us)
 - [⚠️ Disclaimer](#disclaimer)
@@ -482,26 +481,6 @@ where `{N_pos}` is the number of samples with predicted probability > 0.5. Colum
 ---
 
 
-<a id="faq"></a>
-## ❓ FAQ
-
-**Q: First run is very slow?**  
-A: Expected. The pipeline builds molecular graphs, computes Morgan fingerprints, and extracts MoLFormer embeddings in `MolTran_CUDA11`. Results are cached as `.pt` files, so later runs are much faster.
-
-**Q: Results look wrong after changing CSV or SMILES canonicalization?**  
-A: Delete all `DEL_*_emb.pt` and `*_emb.pt` caches in that directory and rerun.
-
-**Q: `dataset_mode includes 'emb' but --molformer-ckpt-path was not provided`?**  
-A: Pass `--molformer-ckpt-path` pointing to the MoLFormer pretrained weights.
-
-**Q: Cannot find Python for the MolTran environment?**  
-A: For the example `dataset_HCV/` run you can skip MolTran if `*_emb.pt` files are present. Install / set `--molformer-env` only when regenerating embeddings for new data. See `preprocessing/extract_embeddings.py`.
-
-**Q: Out of GPU memory?**  
-A: Try a smaller `--batch-size` (e.g. 16). Embedding extraction also depends on MoLFormer model size.
-
-**Q: `experiments/train_cla2_final_version_S*.sh` fails with unknown arguments?**  
-A: Some older S2/S4/S7/S8 scripts still reference removed CLI flags. Update them using `train_cla2_final_version.sh` or the commands above.
 
 ---
 
