@@ -69,14 +69,14 @@ Hybrid multimodal fusion (atteCat)
 <a id="installation"></a>
 ## ⚙️ Installation
 
-DARTnet requires **two separate Conda environments**:
+DARTnet uses **two Conda environments**:
 
 | Environment | Purpose |
 |-------------|---------|
-| `DARTnet` | Training, inference, graph / fingerprint features |
-| `MolTran_CUDA11` | MoLFormer embedding extraction (subprocess via `preprocessing/`) |
+| `DARTnet` | Training / inference (graphs, Morgan fingerprints, model) |
+| `MolTran_CUDA11` | MoLFormer embedding extraction (called as a subprocess) |
 
-Check your CUDA version first:
+Check CUDA first:
 
 ```bash
 nvidia-smi
@@ -84,43 +84,70 @@ nvidia-smi
 nvcc --version
 ```
 
+> The reference stack below is validated on Linux + **CUDA 12.1**.  
+> If your CUDA differs, change the PyTorch / PyG wheel URLs accordingly  
+> ([PyTorch](https://pytorch.org/get-started/previous-versions/),  
+> [PyG](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)).
+
 ### 1️⃣ DARTnet environment (train / infer)
 
 ```bash
-conda create -n DARTnet python=3.10 -y
+# 1) Create env
+conda create -n DARTnet python=3.11 -y
 conda activate DARTnet
 
-# PyTorch 2.5 + CUDA 12.1 (adjust for your CUDA; see https://pytorch.org/get-started/previous-versions/)
-pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+# 2) PyTorch 2.5.1 + CUDA 12.1
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+  --index-url https://download.pytorch.org/whl/cu121
 
-# PyG extensions (must match torch/CUDA; see https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)
-pip install pyg_lib torch_scatter torch_sparse torch_cluster -f https://data.pyg.org/whl/torch-2.5.1+cu121.html
-pip install torch-geometric
+# 3) PyTorch Geometric + extensions (must match torch/CUDA)
+pip install torch_scatter torch_sparse torch_cluster \
+  -f https://data.pyg.org/whl/torch-2.5.1+cu121.html
+pip install torch-geometric==2.6.1
 
-# Core dependencies
-pip install pytorch-lightning==2.5.2 rdkit-pypi pandas numpy scipy scikit-learn tqdm
-pip install bitsandbytes transformers==4.35.0
+# 4) Remaining packages (pinned in requirements.txt)
+pip install -r requirements.txt
 ```
 
-**Reference versions (validated on Linux + CUDA 12.1):**
+**Why `requirements.txt`?**  
+PyTorch and PyG wheels depend on your CUDA build and cannot be fully expressed by a plain pip list alone.  
+Use the steps above for `torch` / PyG, then `pip install -r requirements.txt` for the rest.
+
+**Reference versions (validated):**
 
 | Package | Version |
 |---------|---------|
-| python | 3.10 |
-| torch | 2.5.1 |
+| python | 3.11 |
+| torch | 2.5.1 (+cu121) |
 | torch-geometric | 2.6.1 |
+| torch_scatter / torch_sparse / torch_cluster | matching `torch-2.5.1+cu121` wheels |
 | pytorch-lightning | 2.5.2 |
+| torchmetrics | 1.7.4 |
 | rdkit-pypi | 2022.9.5 |
-| pandas | 2.3.x |
-| numpy | 1.26.x |
+| pandas | 2.3.3 |
+| numpy | 1.26.2 |
+| ogb | 1.3.6 |
 | transformers | 4.35.0 |
-| bitsandbytes | 0.46.x |
+| bitsandbytes | 0.46.1 |
+
+Quick check:
+
+```bash
+python -c "import torch, torch_geometric, pytorch_lightning, rdkit, ogb; print(torch.__version__, torch.cuda.is_available())"
+```
 
 ### 2️⃣ MolTran_CUDA11 environment (embedding extraction)
 
-MoLFormer embeddings are extracted in a separate environment, following the [IBM MoLFormer](https://github.com/IBM/molformer) notebook. Set up a Conda environment named `MolTran_CUDA11` with the MoLFormer dependencies, then point DARTnet to the pretrained checkpoint (see below).
+MoLFormer embeddings are generated in a **separate** env (historical notebook stack), then loaded by DARTnet.
 
-Pass `--molformer-env MolTran_CUDA11` during training/inference; `preprocessing/extract_embeddings.py` launches a subprocess in that environment.
+1. Create a Conda env named `MolTran_CUDA11` following [IBM MoLFormer](https://github.com/IBM/molformer) (Python 3.8 + older PyTorch / Lightning stack).
+2. Keep DARTnet as the active env for training/inference.
+3. Pass `--molformer-env MolTran_CUDA11`; `preprocessing/extract_embeddings.py` will launch a subprocess in that env.
+
+Bundled under this repo (no extra download needed for defaults):
+
+- `preprocessing/molformer/` — MoLFormer inference code + `hparams.yaml`
+- `preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt` — pretrained weights (Git LFS)
 
 ---
 
@@ -129,21 +156,20 @@ Pass `--molformer-env MolTran_CUDA11` during training/inference; `preprocessing/
 
 ### 📌 MoLFormer checkpoint (required)
 
-When embeddings are used, a MoLFormer pretrained checkpoint is required:
+Default path (shipped in this repo via Git LFS):
 
-```bash
-# Option 1: obtain from the IBM MoLFormer repository (recommended)
-# https://github.com/IBM/molformer
-# Place the checkpoint locally, e.g.:
-# /path/to/N-Step-Checkpoint_3_30000.ckpt
+```text
+preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt
 ```
 
+If the file is missing after clone, pull LFS objects:
+
 ```bash
-# Option 2: if you already have MoLFormer weights packaged elsewhere,
-# point --molformer-ckpt-path to N-Step-Checkpoint_3_30000.ckpt
+git lfs pull
 ```
 
-Pass these arguments for both training and inference:
+Or download from [IBM MoLFormer](https://github.com/IBM/molformer) and place it at the path above  
+(or pass a custom path):
 
 ```bash
 --molformer-ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt
@@ -157,6 +183,7 @@ Pass these arguments for both training and inference:
 
 ```
 DARTnet/
+├── requirements.txt            # pip deps (after installing torch + PyG)
 ├── dartnet/                    # Core package: train / predict / model / config
 │   ├── train.py                # Training entry (train_tune / train_final)
 │   ├── predict.py              # Inference entry
