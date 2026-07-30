@@ -1,0 +1,467 @@
+# ✨ DARTnet ✨
+
+This is a [PyTorch](https://pytorch.org/) / [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/) implementation of our study:
+
+## 🎯 DARTnet: DEL-informed Artificial Intelligence for RNA-Targeted molecule discovery
+
+RNA molecules represent an emerging class of therapeutic targets, but discovering small molecules that selectively recognize structured RNAs remains challenging. The lack of large-scale, target-specific RNA–small molecule interaction data limits the ability of computational methods to learn RNA-specific chemical preferences.
+
+DARTnet is a DEL-informed deep learning framework for RNA-targeted small-molecule discovery. By learning target-specific chemical preferences from DNA-encoded library (DEL) screening-derived enrichment signals, DARTnet predicts RNA–small molecule binding probabilities and prioritizes high-confidence candidates from large chemical libraries. DARTnet integrates complementary molecular representations, including Morgan fingerprints, molecular graphs, and pretrained SMILES embeddings, through a hybrid multimodal fusion architecture combining attention-based modality gating and cross-modal feature interaction. A Kolmogorov–Arnold Network (KAN) prediction head is further used to model complex nonlinear relationships between molecular features and RNA-binding probability.
+
+DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperformed existing computational approaches and achieved a 70% experimental validation rate among high-confidence predictions using microscale thermophoresis (MST). DARTnet was further applied to disease-associated structured RNA targets, including coronavirus SL5 RNA elements, KRAS 5′UTR G-quadruplexes, and the PLEC S3E-1 structural splicing enhancer. The identified compounds showed strong binding activity and functional effects in reporter assays, cancer cell models, patient-derived organoids, and mouse models, demonstrating the potential of DARTnet for discovering functional small-molecule modulators of challenging RNA targets.
+
+<p align="center">
+  <img src="Fig/overview.png" alt="Overview of DARTnet workflow" width="100%">
+</p>
+<p align="center"><b>Overview of DARTnet workflow</b></p>
+
+## 📖 Table of contents
+
+- [🧬 Model architecture](#model-architecture)
+- [⚙️ Installation](#installation)
+- [📦 Pretrained models and external dependencies](#pretrained-models)
+- [📁 Repository structure](#repository-structure)
+- [📊 Example dataset: HCV](#example-dataset-hcv)
+- [🧪 Data format and preprocessing](#data-format-and-preprocessing)
+- [🚀 Training](#training)
+- [🔮 Inference](#inference)
+- [❓ FAQ](#faq)
+- [📚 Citation and acknowledgements](#citation-and-acknowledgements)
+- [☎️ Contact us](#contact-us)
+- [⚠️ Disclaimer](#disclaimer)
+
+---
+
+<a id="model-architecture"></a>
+## 🧬 Model architecture
+
+DARTnet (c603) uses a fixed multimodal architecture (`graph+fp+emb` + `cross_interact` + `atteCat`):
+
+```
+SMILES
+  ├─► Molecular graph (x, edge_index, edge_attr)
+  │     └─► Node MLP (79→256) → Edge MLP (13→13)
+  │           └─► 4× [GAT → BatchRenorm → Mish] + residual projection
+  │                 └─► Global mean pool → LayerNorm  →  f_GNN [256]
+  ├─► Morgan2048 fingerprint (ECFP4, radius=2)
+  │     └─► MLP → f_FP [256]
+  └─► MoLFormer embedding
+        └─► MLPemb → f_EMB [100]
+
+Hybrid multimodal fusion (atteCat)
+  ├─ Gated multimodal fusion branch      → 456-d
+  └─ Cross-modal interaction branch      → 3×48 = 144-d
+        └─ Concatenate → 600-d → KAN head → sigmoid → P(bind)
+```
+
+| Module | Description |
+|--------|-------------|
+| GNN backbone | 4-layer GAT (2 heads, dropout=0.9) with edge features and skip-add residual |
+| Fingerprint branch | Morgan ECFP4 (2048 bits), MLP projection to 256-d |
+| Embedding branch | MoLFormer pretrained checkpoint for SMILES embeddings; MLPemb to 100-d |
+| Fusion module | Hybrid multimodal fusion (gated + cross-modal branches) |
+| Classification head | Efficient KAN (grid=5, hidden=64) + binary BCE |
+
+> Run all commands from the **project root**: `python -m dartnet.train` / `python -m dartnet.predict`.
+
+---
+
+<a id="installation"></a>
+## ⚙️ Installation
+
+DARTnet requires **two separate Conda environments**:
+
+| Environment | Purpose |
+|-------------|---------|
+| `DARTnet` | Training, inference, graph / fingerprint features |
+| `MolTran_CUDA11` | MoLFormer embedding extraction (subprocess via `preprocessing/`) |
+
+Check your CUDA version first:
+
+```bash
+nvidia-smi
+# or
+nvcc --version
+```
+
+### 1️⃣ DARTnet environment (train / infer)
+
+```bash
+conda create -n DARTnet python=3.10 -y
+conda activate DARTnet
+
+# PyTorch 2.5 + CUDA 12.1 (adjust for your CUDA; see https://pytorch.org/get-started/previous-versions/)
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+# PyG extensions (must match torch/CUDA; see https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)
+pip install pyg_lib torch_scatter torch_sparse torch_cluster -f https://data.pyg.org/whl/torch-2.5.1+cu121.html
+pip install torch-geometric
+
+# Core dependencies
+pip install pytorch-lightning==2.5.2 rdkit-pypi pandas numpy scipy scikit-learn tqdm
+pip install bitsandbytes transformers==4.35.0
+```
+
+**Reference versions (validated on Linux + CUDA 12.1):**
+
+| Package | Version |
+|---------|---------|
+| python | 3.10 |
+| torch | 2.5.1 |
+| torch-geometric | 2.6.1 |
+| pytorch-lightning | 2.5.2 |
+| rdkit-pypi | 2022.9.5 |
+| pandas | 2.3.x |
+| numpy | 1.26.x |
+| transformers | 4.35.0 |
+| bitsandbytes | 0.46.x |
+
+### 2️⃣ MolTran_CUDA11 environment (embedding extraction)
+
+MoLFormer embeddings are extracted in a separate environment, following the [IBM MoLFormer](https://github.com/IBM/molformer) notebook. Set up a Conda environment named `MolTran_CUDA11` with the MoLFormer dependencies, then point DARTnet to the pretrained checkpoint (see below).
+
+Pass `--molformer-env MolTran_CUDA11` during training/inference; `preprocessing/extract_embeddings.py` launches a subprocess in that environment.
+
+---
+
+<a id="pretrained-models"></a>
+## 📦 Pretrained models and external dependencies
+
+### 📌 MoLFormer checkpoint (required)
+
+When embeddings are used, a MoLFormer pretrained checkpoint is required:
+
+```bash
+# Option 1: obtain from the IBM MoLFormer repository (recommended)
+# https://github.com/IBM/molformer
+# Place the checkpoint locally, e.g.:
+# /path/to/N-Step-Checkpoint_3_30000.ckpt
+```
+
+```bash
+# Option 2: if you already have MoLFormer weights packaged elsewhere,
+# point --molformer-ckpt-path to N-Step-Checkpoint_3_30000.ckpt
+```
+
+Pass these arguments for both training and inference:
+
+```bash
+--molformer-ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt
+--molformer-env MolTran_CUDA11
+```
+
+---
+
+<a id="repository-structure"></a>
+## 📁 Repository structure
+
+```
+DARTnet/
+├── dartnet/                    # Core package: train / predict / model / config
+│   ├── train.py                # Training entry (train_tune / train_final)
+│   ├── predict.py              # Inference entry
+│   ├── model.py                # DartNet model definition
+│   ├── config.py               # Argument serialization / run directory naming
+│   └── efficient_kan.py        # KAN classification head
+├── data_loading/               # Graph + Morgan + MoLFormer embedding pipeline
+├── preprocessing/              # MoLFormer embedding generation (subprocess orchestration)
+├── utils/                      # BatchRenorm, metrics, etc.
+├── dataset_HCV/                # Example target dataset (HCV IRES)
+├── experiments/                # Experiment launch scripts
+│   ├── train_cla2_final_version.sh
+│   └── logs/                   # Local logs (gitignored)
+├── train_cla2_final_version.sh # Symlink → experiments/
+└── README.md
+```
+
+Clone and enter the repository:
+
+```bash
+git clone https://github.com/lyli1013/DARTnet.git
+cd DARTnet
+conda activate DARTnet
+```
+
+---
+
+<a id="example-dataset-hcv"></a>
+## 📊 Example dataset: HCV
+
+`dataset_HCV/` is a **demo target dataset** for GitHub, corresponding to DEL binary classification for the HCV IRES RNA target (split aligned with internal `data_S5_balanced_v1/split_1`).
+
+### Files
+
+| File | Description | Approx. size |
+|------|-------------|--------------|
+| `train_set.csv` | Training set | 1,709 |
+| `val_set.csv` | Validation set | 408 |
+| `test_set.csv` | Test set | 507 |
+| `S5_validated_test_set_1118_unique*.csv` | Wet-lab validated molecules (inference) | 18 |
+| `FDA_smiles_2349_20251022.csv` | FDA-approved drug SMILES (optional screening) | 2,349 |
+
+### Training CSV format
+
+Header row, comma-separated. The following three columns are **required**:
+
+| Column | Description |
+|--------|-------------|
+| `FeatureIndex` | Unique sample ID (matches keys in embedding `.pt` files) |
+| `Smiles` | Small-molecule SMILES string |
+| `Label` | Binary label (0 = non-binder, 1 = binder) |
+
+Example:
+
+```csv
+FeatureIndex,Smiles,Label
+HGODEL0034-240-32-159,CC(=O)N1CC(N(C)C(=O)C2(Cc3cccc(-c4noc(-c5ccc6ncn(C)c6c5)n4)c3)CC2)C1,1
+HGODEL0034-190-84-159,CC(=O)NC1CCN(C(=O)CCc2cccc(-c3noc(-c4ccc5ncn(C)c5c4)n3)c2)CC1,1
+```
+
+### Inference CSV format
+
+Name the file `{infer_file_name}.csv` and place it under `--data-path`.
+
+At minimum include `FeatureIndex` and `Smiles`. Extra columns (e.g. `original_Smiles`, `Duplicate_FeatureIndex`) are allowed and ignored.
+
+Example (`S5_validated_test_set_1118_unique_20260129.csv`):
+
+```csv
+FeatureIndex,original_Smiles,Smiles,Duplicate_FeatureIndex
+lsis-11,C12=C3C(=CC=C1OC(C2)CN(C)C)N=C([N]3CCCN(C)C)N([H])[H],CN(C)CCCn1c(N)nc2ccc3c(c21)CC(CN(C)C)O3,Isis_11
+```
+
+> **Background:** This validation set is used to predict HCV IRES RNA binders for wet-lab MST follow-up. See the DARTnet paper for experimental details (citation to be updated upon publication).
+
+---
+
+<a id="data-format-and-preprocessing"></a>
+## 🧪 Data format and preprocessing
+
+### SMILES canonicalization
+
+`data_loading` canonicalizes all input SMILES with RDKit (`preprocessing/smiles_canonical.py`) so GNN and Morgan fingerprints stay consistent.
+
+> ⚠️ **Important:** If the directory contains **legacy** cached `.pt` files (generated before unified canonicalization), delete them and regenerate; otherwise train/infer features may be inconsistent:
+>
+> ```bash
+> rm -f dataset_HCV/DEL_*_morgan2048_emb.pt
+> rm -f dataset_HCV/*_emb.pt
+> rm -f dataset_HCV/S5_*_morgan2048_emb.pt
+> ```
+
+### Automatic feature caching
+
+On the first training or inference run, the pipeline will:
+
+1. Read CSV → build PyG molecular graphs (node/edge features)
+2. Compute Morgan2048 fingerprints in parallel
+3. Generate MoLFormer embeddings via `MolTran_CUDA11` (if `*_emb.pt` is missing)
+4. Cache full features as `.pt` files for faster subsequent runs
+
+| Source CSV | Cached files |
+|------------|--------------|
+| `train_set.csv` | `DEL_train_Label_morgan2048_emb.pt` + `train_emb.pt` |
+| `val_set.csv` | `DEL_val_Label_morgan2048_emb.pt` + `val_emb.pt` |
+| `test_set.csv` | `DEL_test_Label_morgan2048_emb.pt` + `test_emb.pt` |
+| `{infer_file_name}.csv` | `{infer_file_name}_morgan2048_emb.pt` + `{infer_file_name}_emb.pt` |
+
+### Standalone embedding extraction (optional)
+
+```bash
+python preprocessing/extract_embeddings.py \
+    --data-dir ./dataset_HCV \
+    --ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt \
+    --molformer-env MolTran_CUDA11 \
+    --device cuda:0
+```
+
+See [`preprocessing/README.md`](preprocessing/README.md) for more details.
+
+---
+
+<a id="training"></a>
+## 🚀 Training
+
+DARTnet uses a **two-stage training** strategy:
+
+| Stage | `--train_stage` | Description |
+|-------|-----------------|-------------|
+| Tuning | `train_tune` | train/val split, early stopping, monitor **Validation PRAUC** |
+| Final model | `train_final` | Merge train + val; fixed epoch count (from the best tune checkpoint epoch) |
+
+### ▶️ Quick start (HCV example)
+
+```bash
+cd DARTnet
+conda activate DARTnet
+
+export MOLFORMER_CKPT="/path/to/N-Step-Checkpoint_3_30000.ckpt"
+export OUT="./output/dataset_HCV"
+
+# Stage 1: train_tune
+python -m dartnet.train \
+    --train_stage train_tune \
+    --dataset-dir ./dataset_HCV \
+    --dataset-id dataset_HCV \
+    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
+    --molformer-env MolTran_CUDA11 \
+    --out-path "${OUT}" \
+    --gpu-devices 0
+
+# Stage 2: train_final (uses best tune epoch; writes to ${OUT}_final/)
+python -m dartnet.train \
+    --train_stage train_final \
+    --dataset-dir ./dataset_HCV \
+    --dataset-id dataset_HCV \
+    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
+    --molformer-env MolTran_CUDA11 \
+    --out-path "${OUT}" \
+    --gpu-devices 0
+```
+
+Or use the wrapper script (edit `MOLFORMER_CKPT` and output paths first):
+
+```bash
+bash experiments/train_cla2_final_version.sh
+# or
+bash train_cla2_final_version.sh
+```
+
+### Output directory naming
+
+The run directory name is auto-built from hyperparameters (`get_gnn_wandb_name`). Default c603:
+
+```
+GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=256+GATH=2+GATD=0.9+BS=32+ESP=5+lr=0.0001_atteCat_embdrop0.1_fpdrop0.5_gnndrop0.0
+```
+
+Example paths:
+
+```
+output/dataset_HCV/<RUN_DIR>/          # train_tune checkpoints + metrics
+output/dataset_HCV_final/<RUN_DIR>/    # train_final checkpoints + test metrics
+```
+
+### Main CLI arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--train_stage` | (required) | `train_tune` or `train_final` |
+| `--dataset-dir` | — | Dataset folder containing CSVs |
+| `--dataset-id` | `split_1` | Identifier used in logs / metric filenames |
+| `--molformer-ckpt-path` | — | MoLFormer weights (required when using emb) |
+| `--molformer-env` | `MolTran_CUDA11` | Conda env for embedding subprocess |
+| `--out-path` | — | Output root directory |
+| `--gpu-devices` | `2` | GPU device index |
+| `--seed` | `42` | Random seed |
+| `--batch-size` | `32` | Batch size |
+| `--lr` | `1e-4` | Learning rate |
+| `--early-stopping-patience` | `5` | Early-stopping patience (tune only) |
+
+List all arguments:
+
+```bash
+python -m dartnet.train --help
+```
+
+---
+
+<a id="inference"></a>
+## 🔮 Inference
+
+Use the checkpoint from `train_final` to score new SMILES.
+
+### ▶️ Example command
+
+```bash
+conda activate DARTnet
+
+RUN_DIR="GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=256+GATH=2+GATD=0.9+BS=32+ESP=5+lr=0.0001_atteCat_embdrop0.1_fpdrop0.5_gnndrop0.0"
+
+python -m dartnet.predict \
+    --infer \
+    --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
+    --data-path ./dataset_HCV \
+    --infer-file-name S5_validated_test_set_1118_unique_20260129 \
+    --molformer-ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt \
+    --molformer-env MolTran_CUDA11 \
+    --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
+    --use-gpu
+```
+
+### Output
+
+Predictions are written to:
+
+```
+{output-path}/infer/predictions_{infer_file_name}_({N_pos}).csv
+```
+
+where `{N_pos}` is the number of samples with predicted probability > 0.5. Columns:
+
+| Column | Description |
+|--------|-------------|
+| `ID` | Sample `FeatureIndex` |
+| `Prediction` | Binding probability (sigmoid, 0–1) |
+
+> **Note:** In `dartnet/predict.py`, `Trainer(devices=[...])` may hard-code a GPU index. Edit the `devices` list if it does not match your machine.
+
+---
+
+
+<a id="faq"></a>
+## ❓ FAQ
+
+**Q: First run is very slow?**  
+A: Expected. The pipeline builds molecular graphs, computes Morgan fingerprints, and extracts MoLFormer embeddings in `MolTran_CUDA11`. Results are cached as `.pt` files, so later runs are much faster.
+
+**Q: Results look wrong after changing CSV or SMILES canonicalization?**  
+A: Delete all `DEL_*_emb.pt` and `*_emb.pt` caches in that directory and rerun.
+
+**Q: `dataset_mode includes 'emb' but --molformer-ckpt-path was not provided`?**  
+A: Pass `--molformer-ckpt-path` pointing to the MoLFormer pretrained weights.
+
+**Q: Cannot find Python for the MolTran environment?**  
+A: Confirm `MolTran_CUDA11` is installed, or set the correct name with `--molformer-env`. See path search logic in `preprocessing/extract_embeddings.py`.
+
+**Q: Out of GPU memory?**  
+A: Try a smaller `--batch-size` (e.g. 16). Embedding extraction also depends on MoLFormer model size.
+
+**Q: `experiments/train_cla2_final_version_S*.sh` fails with unknown arguments?**  
+A: Some older S2/S4/S7/S8 scripts still reference removed CLI flags. Update them using `train_cla2_final_version.sh` or the commands above.
+
+---
+
+<a id="citation-and-acknowledgements"></a>
+## 📚 Citation and acknowledgements
+
+If you find DARTnet useful in your research, please cite this repository and the DARTnet paper when available:
+
+```
+DARTnet: Deep learning for activity prediction of RNA-targeting small molecules
+from target-enrichment libraries.
+GitHub: https://github.com/lyli1013/DARTnet
+(Paper citation to be updated upon publication.)
+```
+
+**Related resources:**
+
+- [IBM MoLFormer](https://github.com/IBM/molformer) — chemical language model used for SMILES embeddings
+- [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) — molecular graph neural networks
+- [EfficientKAN](https://github.com/Blealtan/efficient-kan) — Kolmogorov–Arnold Network implementation used in the classification head
+
+---
+
+<a id="contact-us"></a>
+## ☎️ Contact us
+
+Please contact us if you are interested in our work or potential academic collaborations.
+
+- (Contact information to be added)
+
+---
+
+<a id="disclaimer"></a>
+## ⚠️ Disclaimer
+
+Predictions from DARTnet are for computational decision support only and **do not replace** wet-lab validation. Please have experts review results before MST, cellular assays, or other follow-up experiments. This software is provided "as is", and the authors are not liable for any loss arising from its use.
