@@ -19,4 +19,3 @@ nohup.out
 .vscode/
 .DS_Store
 *~
-preprocessing/checkpoints/*.ckpt
