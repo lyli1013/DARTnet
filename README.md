@@ -84,10 +84,7 @@ nvidia-smi
 nvcc --version
 ```
 
-> The reference stack below is validated on Linux + **CUDA 12.1**.  
-> If your CUDA differs, change the PyTorch / PyG wheel URLs accordingly  
-> ([PyTorch](https://pytorch.org/get-started/previous-versions/),  
-> [PyG](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)).
+> ❗ **Note:** The reference stack below is validated on Linux + **CUDA 12.1**. If your CUDA differs, change the PyTorch / PyG wheel URLs accordingly ([PyTorch](https://pytorch.org/get-started/previous-versions/), [PyG](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)).
 
 ### 1️⃣ DARTnet environment (train / infer)
 
@@ -108,10 +105,6 @@ pip install torch-geometric==2.6.1
 # 4) Remaining packages (pinned in requirements.txt)
 pip install -r requirements.txt
 ```
-
-**Why `requirements.txt`?**  
-PyTorch and PyG wheels depend on your CUDA build and cannot be fully expressed by a plain pip list alone.  
-Use the steps above for `torch` / PyG, then `pip install -r requirements.txt` for the rest.
 
 **Reference versions (validated):**
 
