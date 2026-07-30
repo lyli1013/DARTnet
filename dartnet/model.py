@@ -1,4 +1,4 @@
-# 上一版模型为graph_models_ekan.py。这版模型添加了kan损失
+# Previous model version: graph_models_ekan.py. This version adds KAN loss.
 import os
 import torch
 import torch_geometric
@@ -40,40 +40,40 @@ import pandas as pd
 import numpy as np
 import os
 
-# ===================== 新增：定义特征保存的辅助函数 =====================
+# ===================== Added: helper to save features =====================
 def save_combined_feat_to_csv(combined_feat, csv_path, batch_idx):
     """
-    将单批次的combined_feat保存到CSV文件（追加模式）
-    :param combined_feat: 形状为[batch, feat_dim]的torch张量（cuda/cpu）
-    :param csv_path: 保存的CSV文件路径
-    :param batch_idx: 批次索引（用于标注每行数据所属批次）
+    Save one batch of combined_feat to a CSV file (append mode).
+    :param combined_feat: torch tensor of shape [batch, feat_dim] (cuda/cpu)
+    :param csv_path: CSV file path to save to
+    :param batch_idx: batch index (to label which batch each row belongs to)
     """
-    # 1. 将张量从CUDA移到CPU，转为numpy数组
+    # 1. Move tensor from CUDA to CPU and convert to numpy
     if combined_feat.is_cuda:
         feat_np = combined_feat.detach().cpu().numpy()
     else:
         feat_np = combined_feat.detach().numpy()
     
-    # 2. 构建DataFrame：每一行是一个样本的特征，添加批次索引列
-    # 生成特征列名（feat_0, feat_1, ..., feat_455）
+    # 2. Build DataFrame: each row is one sample's features; add batch index column
+    # Generate feature column names (feat_0, feat_1, ..., feat_N)
     feat_cols = [f"feat_{i}" for i in range(feat_np.shape[1])]
     df_feat = pd.DataFrame(feat_np, columns=feat_cols)
-    # 添加批次索引列（便于后续溯源）
+    # Add batch index column (for later tracing)
     df_feat['batch_idx'] = batch_idx
-    # 添加样本在批次内的索引列
+    # Add within-batch sample index column
     df_feat['sample_in_batch_idx'] = range(len(df_feat))
     
-    # 3. 追加保存到CSV
-    # 判断文件是否存在：不存在则写入表头，存在则追加（不写表头）
+    # 3. Append-save to CSV
+    # Write header only if file does not exist; otherwise append without header
     header = not os.path.exists(csv_path)
     df_feat.to_csv(
         csv_path,
-        mode='a',          # 追加模式
-        header=header,    # 仅首次写入表头
-        index=False,      # 不保存DataFrame的索引
-        float_format='%.6f'  # 保留6位小数，保证精度
+        mode='a',          # Append mode
+        header=header,    # Write header only on first write
+        index=False,      # Do not save DataFrame index
+        float_format='%.6f'  # Keep 6 decimal places for precision
     )
-    print(f"✅ 第{batch_idx}批次特征已追加保存至: {csv_path} (本批次样本数: {len(df_feat)})")
+    print(f"[OK] Batch {batch_idx} features appended to: {csv_path} (samples in batch: {len(df_feat)})")
 
 
 
@@ -134,55 +134,55 @@ class MLPemb(nn.Module):
         mode: str = "graph+fp",
     ):
         super(MLPemb, self).__init__()
-        self.activation = nn.ReLU()  # 保留原有激活函数
+        self.activation = nn.ReLU()  # Keep original activation
         self.mode = mode
         
-        # 1. 定义原有线性层（与原代码一致）
+        # 1. Define original linear layers (same as prior code)
         self.layer1 = nn.Linear(input_features, dnn_module_layer1_out)
         self.layer2 = nn.Linear(dnn_module_layer1_out, dnn_module_layer2_out)
         self.layer3 = nn.Linear(dnn_module_layer2_out, dnn_module_layer3_out)
         self.layer4 = nn.Linear(dnn_module_layer3_out, dnn_module_layer4_out)
         
-        # 2. 为每个线性层添加对应的LayerNorm层
-        # 批归一化维度与线性层输出维度严格一致
+        # 2. Add a LayerNorm after each linear layer
+        # Norm dimension strictly matches linear layer output dim
         self.bn1 = nn.LayerNorm(dnn_module_layer1_out)
         self.bn2 = nn.LayerNorm(dnn_module_layer2_out)
         self.bn3 = nn.LayerNorm(dnn_module_layer3_out)
         self.bn4 = nn.LayerNorm(dnn_module_layer4_out)
         
-        # 保留权重初始化函数
+        # Keep weight initialization
         self._initialize_weights()
         
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                # 线性层权重初始化（与原代码一致）
+                # Linear weight init (same as prior code)
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.LayerNorm):
-                # 新增：批归一化层的标准初始化
-                nn.init.ones_(m.weight)  # 缩放因子γ初始化为1
-                nn.init.zeros_(m.bias)   # 偏移量β初始化为0
+                # Added: standard LayerNorm initialization
+                nn.init.ones_(m.weight)  # Scale factor gamma init to 1
+                nn.init.zeros_(m.bias)   # Bias beta init to 0
     
     def forward(self, x):
-        x = x.view(x.size(0), -1)  # 展平输入特征（适配批次维度）
+        x = x.view(x.size(0), -1)  # Flatten input features (batch-aware)
         
-        # 前向传播流程：线性层 → 批归一化 → 激活函数（核心修改）
+        # Forward: linear -> LayerNorm -> activation (core change)
         x1 = self.layer1(x)
-        x1 = self.bn1(x1)  # 线性层1后添加批归一化
+        x1 = self.bn1(x1)  # LayerNorm after linear 1
         x1 = self.activation(x1)
         
         x2 = self.layer2(x1)
-        x2 = self.bn2(x2)  # 线性层2后添加批归一化
+        x2 = self.bn2(x2)  # LayerNorm after linear 2
         x2 = self.activation(x2)
         
         x3 = self.layer3(x2)
-        x3 = self.bn3(x3)  # 线性层3后添加批归一化
+        x3 = self.bn3(x3)  # LayerNorm after linear 3
         x3 = self.activation(x3)
         
         x4 = self.layer4(x3)
-        x4 = self.bn4(x4)  # 线性层4后添加批归一化
+        x4 = self.bn4(x4)  # LayerNorm after linear 4
         x4 = self.activation(x4)
         
         return x4
@@ -341,8 +341,8 @@ class DartNet(pl.LightningModule):
         optimiser_weight_decay: float = 1e-10,
         gnn_feat_out_drop: float = 0.0,
         
-        fingerprint_type: str = "morgan2048",  # 分子指纹类型
-        fp_dim_morgan2048: int = 2048,  # 分子指纹维度
+        fingerprint_type: str = "morgan2048",  # Molecular fingerprint type
+        fp_dim_morgan2048: int = 2048,  # Molecular fingerprint dimension
         fp_dim_morgan1024: int = 1024,
         fp_dim_maccs: int = 167,
         dnn_module_layer1_out: int = 100,
@@ -369,7 +369,7 @@ class DartNet(pl.LightningModule):
         self.cross_dim = cross_dim
         assert task_type in ["binary_classification", "multi_classification"]
 
-        self.edge_dim = edge_dim   #self将局部变量定义为类的实例属性，可以在类的其他方法中调用
+        self.edge_dim = edge_dim   # Bind local var as instance attribute for use in other methods
         self.task_type = task_type
         self.num_features = num_features
         self.lr = lr
@@ -389,8 +389,8 @@ class DartNet(pl.LightningModule):
         self.gnn_feat_out_drop = gnn_feat_out_drop
         
         # Parameters of the DNN Module
-        self.fingerprint_type = fingerprint_type  # 分子指纹类型
-        self.fp_dim_morgan2048 = fp_dim_morgan2048  # 分子指纹维度
+        self.fingerprint_type = fingerprint_type  # Molecular fingerprint type
+        self.fp_dim_morgan2048 = fp_dim_morgan2048  # Molecular fingerprint dimension
         self.fp_dim_morgan1024 = fp_dim_morgan1024
         self.fp_dim_maccs = fp_dim_maccs
         self.dnn_module_layer1_out = dnn_module_layer1_out
@@ -406,10 +406,10 @@ class DartNet(pl.LightningModule):
         print("emb_feat_out_drop:", emb_feat_out_drop)
         print("emb_feat_dim_out:", emb_feat_dim_out)
         
-        # 训练参数
+        # Training parameters
         self.fixed_epochs = kwargs.get("fixed_epochs")
         
-        # Store model outputs per epoch (for train, valid) or test run; used to compute the reporting metrics。defaultdict 是 Python 标准库 collections 中的一种特殊字典，其特点是：当访问一个不存在的键时，会自动为该键创建默认值（此处为 list 空列表）
+        # Store model outputs per epoch (for train, valid) or test run; used to compute the reporting metrics. defaultdict auto-creates a default (here: empty list) for missing keys.
         self.train_output = defaultdict(list)
         self.val_output = defaultdict(list)
         self.val_test_output = defaultdict(list)
@@ -435,7 +435,7 @@ class DartNet(pl.LightningModule):
         self.train_graph_embeddings = defaultdict(list)
 
         # kan loss
-        # 设置KAN正则化配置
+        # Set KAN regularization config
         if kan_reg_config is None:
             kan_reg_config = {
                 'use_regularization': True,
@@ -547,7 +547,7 @@ class DartNet(pl.LightningModule):
         edge_index: torch.Tensor,
         batch: torch.Tensor,
         edge_attr: Optional[torch.Tensor] = None,
-        fingerprint: Optional[torch.Tensor] = None,  # 新增：接收分子指纹
+        fingerprint: Optional[torch.Tensor] = None,  # Added: accept molecular fingerprint
         smiles_embedding: Optional[torch.Tensor] = None,
     ):
         x = x.float()
@@ -625,10 +625,10 @@ class DartNet(pl.LightningModule):
         # print("predictions.shape:", predictions.shape)
         # print("y.shape:", y.shape)
 
-        # 任务损失（分类）
+        # Task loss (classification)
         task_loss = F.binary_cross_entropy_with_logits(predictions.float(), y.float())
         
-        # KAN正则化损失（仅在训练时且启用时）
+        # KAN regularization loss (only during training when enabled)
         if step_type == "train" and self.kan_reg_config['use_regularization']:
             kan_reg_loss = self.output_mlp.regularization_loss(
                 regularize_activation=self.kan_reg_config['activation_weight'],
@@ -637,7 +637,7 @@ class DartNet(pl.LightningModule):
             
             total_loss = task_loss + self.kan_reg_config['overall_weight'] * kan_reg_loss
             
-            # 记录各项损失
+            # Log individual loss terms
             self.log(f"{step_type}_task_loss", task_loss, batch_size=self.batch_size)
             self.log(f"{step_type}_kan_reg_loss", kan_reg_loss, batch_size=self.batch_size)
             self.log(f"{step_type}_total_loss", total_loss, batch_size=self.batch_size)
@@ -661,9 +661,9 @@ class DartNet(pl.LightningModule):
         output = (predictions, y)
 
         if step_type == "train":
-            self.train_output[self.current_epoch].append(output)   # self.current_epoch是pl.LightningModule的内置属性，无需初始化中手动定义
+            self.train_output[self.current_epoch].append(output)   # self.current_epoch is a built-in pl.LightningModule attribute
         elif step_type == "validation":
-            self.val_output[self.current_epoch].append(output)   # 将每个batch的输出output1 = (predictions1, labels1)添加到列表中
+            self.val_output[self.current_epoch].append(output)   # Append each batch output (predictions, labels) to the list
         elif step_type == "validation_test":
             self.val_test_output[self.current_epoch].append(output)
         elif step_type == "test":
@@ -703,10 +703,10 @@ class DartNet(pl.LightningModule):
 
         return test_loss
 
-    # 在DartNet类中添加以下方法
+    # The following method is part of DartNet
     def predict_step(self, batch, batch_idx):
-        """定义推理步骤，明确传递图数据参数"""
-        # 从batch中提取图数据的关键参数（与训练时的forward参数一致）
+        """Define predict step; explicitly pass graph data arguments."""
+        # Extract key graph args from batch (same as training forward args)
         smiles_id = batch.smiles_id
         x = batch.x
         edge_index = batch.edge_index
@@ -715,14 +715,14 @@ class DartNet(pl.LightningModule):
         smiles_embedding = batch.smiles_embedding  
         batch = batch.batch  
         print("smiles_id:", smiles_id)
-        # print("Batch内容:", batch)  # 查看是否包含smiles_id
-        # 调用模型的forward方法，传入所有必需参数
-        output = self.forward(x, edge_index, batch, edge_attr=edge_attr, fingerprint=fingerprint, smiles_embedding=smiles_embedding)  # 与你的forward签名匹配
+        # print("Batch contents:", batch)  # Check whether smiles_id is present
+        # Call model forward with all required arguments
+        output = self.forward(x, edge_index, batch, edge_attr=edge_attr, fingerprint=fingerprint, smiles_embedding=smiles_embedding)  # Matches forward signature
         print("output:", output)
         
-        # 根据模型输出格式，返回预测结果（这里假设output是元组，第三个元素是预测值）
+        # Return predictions based on output format (assume tuple; 3rd element is predictions)
         if isinstance(output, tuple):
-            return output[2]  # 对应原代码中的predictions = output[2]
+            return output[2]  # Corresponds to predictions = output[2] in original code
         return output
 
     def _epoch_end_report(self, epoch_outputs, epoch_type):

@@ -2,7 +2,7 @@ import argparse, os, random
 import copy
 import sys
 import torch
-# 禁用TF32以获得更好的数值稳定性
+# Disable TF32 for better numerical stability
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 # import wandb  # disabled: no local wandb/ logging
@@ -34,50 +34,50 @@ from dartnet.config import (
 
 def fix_seed(seed):
     """
-    修正版本的随机种子设置函数
+    Fixed version of the random seed setup function.
     
     Args:
-        seed: 随机种子
-        full_deterministic: 是否启用完全确定性模式（可能降低性能）
+        seed: Random seed
+        full_deterministic: Whether to enable fully deterministic mode (may reduce performance)
     """
     if seed is None:
         seed = random.randint(1, 10000)
     
-    # 1. 基础随机种子
+    # 1. Basic random seeds
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     
-    # 2. 设置环境变量
+    # 2. Set environment variables
     os.environ['PYTHONHASHSEED'] = str(seed)
-    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # 重要：对于CUDA 10.2+
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # Important for CUDA 10.2+
     
-    # 3. GPU相关设置
+    # 3. GPU-related settings
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         
         # if full_deterministic:
-        # 完全确定性模式（牺牲性能换取可重复性）
+        # Fully deterministic mode (trade performance for reproducibility)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         
         
         
-        # 启用CUDA确定性操作
+        # Enable CUDA deterministic algorithms
         torch.use_deterministic_algorithms(True, warn_only=True)
         # else:
-        #     # 性能模式（可能有一些随机性）
+        #     # Performance mode (may retain some randomness)
         #     torch.backends.cudnn.deterministic = True
         #     torch.backends.cudnn.benchmark = False
         #     torch.backends.cuda.matmul.allow_tf32 = True
         #     torch.backends.cudnn.allow_tf32 = True
     
-    # 4. 线程设置
-    torch.set_num_threads(1)  # 保持，有助于确定性
+    # 4. Thread settings
+    torch.set_num_threads(1)  # Keep; helps determinism
     
-    # print(f"[Info] 随机种子已设置为: {seed}")
-    # print(f"[Info] 确定性模式: {full_deterministic}")
+    # print(f"[Info] Random seed set to: {seed}")
+    # print(f"[Info] Deterministic mode: {full_deterministic}")
     
     return seed
 
@@ -91,7 +91,7 @@ def main():
         type=str, 
         required=True, 
         choices=["train_tune", "train_final"],
-        help="训练测试阶段：tune（调参）、train_final（合并训验证集训模型）"
+        help="Training stage: train_tune (hyperparam search), train_final (merge train+val to train model)"
     )
     parser.add_argument(
         "--eval",
@@ -204,14 +204,14 @@ def main():
         validate_gnn_argparse_arguments(argsdict)
     else:
         argsdict = vars(args)
-        validate_gnn_argparse_arguments(argsdict)   # 检查必要参数是否存在
+        validate_gnn_argparse_arguments(argsdict)   # Check required arguments exist
         del argsdict["config_json_path"]
 
-    # seed_everything(argsdict["seed"])   #两种固定方式均不能完全重复每一次训练，微小差异
+    # seed_everything(argsdict["seed"])   # Neither seeding method fully reproduces every run; tiny diffs remain
     fix_seed(argsdict["seed"])
 
     # Dataset arguments
-    dataset = argsdict["dataset"]  #数据集名称
+    dataset = argsdict["dataset"]  # Dataset name
     dataset_download_dir = argsdict["dataset_download_dir"]
     dataset_split_id = argsdict["dataset_split_id"]
     dataset_one_hot = argsdict["dataset_one_hot"]
@@ -267,13 +267,13 @@ def main():
         dataset_dir=dataset_download_dir,
         one_hot=dataset_one_hot,
         target_name=target_name,
-        # 传递指纹计算参数（可选，使用默认值则无需传递）
-        fingerprint_type=fingerprint_type,    # 计算Morgan指纹
-        morgan_radius=2,              # 半径=2（ECFP4）
-        morgan_nBits=2048,            # 维度=1024（默认2048）
-        useChirality=True,            # 考虑手性
-        num_processes=4,              # 8个并行进程（根据CPU核心数调整）
-        fp_chunk_size=2000,           # 每块处理2000个样本
+        # Pass fingerprint computation args (optional; omit to use defaults)
+        fingerprint_type=fingerprint_type,    # Compute Morgan fingerprints
+        morgan_radius=2,              # Radius=2 (ECFP4)
+        morgan_nBits=2048,            # Bits=2048 (default 2048; comment historically said 1024)
+        useChirality=True,            # Consider chirality
+        num_processes=4,              # Parallel processes (tune to CPU cores; historically noted as 8)
+        fp_chunk_size=2000,           # Process 2000 samples per chunk
         molformer_ckpt_path=molformer_ckpt_path,
         molformer_hparams_path=molformer_hparams_path,
         molformer_env=molformer_env,
@@ -284,10 +284,10 @@ def main():
     if len(train) % batch_size == 1:
         batch_size += 1
 
-    num_features = train[0].x.shape[-1]   # 每个结点的维度
+    num_features = train[0].x.shape[-1]   # Per-node feature dimension
     edge_dim = None
-    if hasattr(train[0], "edge_attr") and train[0].edge_attr is not None:   #判断样本中是否具有edge_attr属性且不为空
-        edge_dim = train[0].edge_attr.shape[-1]    # 每条边的维度
+    if hasattr(train[0], "edge_attr") and train[0].edge_attr is not None:   # Check sample has non-empty edge_attr
+        edge_dim = train[0].edge_attr.shape[-1]    # Per-edge feature dimension
 
     if args.train_stage == "train_tune":
         train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=False)
@@ -309,15 +309,15 @@ def main():
         output_save_dir = os.path.join(out_path, run_name)
         Path(output_save_dir).mkdir(exist_ok=True, parents=True)
     elif args.train_stage == "train_final":
-        output_save_dir_tune = os.path.join(out_path, run_name)  # 调参时确定最优模型的保存路径，获取epoch
+        output_save_dir_tune = os.path.join(out_path, run_name)  # Tune-stage best-model path; used to get epoch
         try:
             ckpt_epochs, best_ckpt_path = get_epochs_from_ckpt_dir(output_save_dir_tune)
-            print(f"{output_save_dir_tune}中找到的ckpt文件及对应的epoch:")
+            print(f"ckpt files and epochs found in {output_save_dir_tune}:")
             for filename, epoch in ckpt_epochs.items():
                 print(f"{filename} → epoch={epoch}")
                 fixed_epochs = epoch
         except Exception as e:
-            print(f"epoch获取处理失败: {e}")
+            print(f"Failed to get epoch from ckpt: {e}")
     
         output_save_dir = os.path.join(f'{out_path}_final', run_name)
         Path(output_save_dir).mkdir(exist_ok=True, parents=True)
@@ -328,7 +328,7 @@ def main():
     # logger = WandbLogger(
     #                     name=run_name,
     #                     project=wandb_project_name,
-    #                     mode="offline"   # 设置为离线模式
+    #                     mode="offline"   # Offline mode
     #                     )
     logger = False
     _ = wandb_project_name  # CLI arg retained for script compatibility
@@ -337,10 +337,10 @@ def main():
     monitor_mode = "min" if "loss" in monitor_loss_name.lower() else "max"
     if args.train_stage == "train_tune":
         checkpoint_callback = ModelCheckpoint(
-            monitor=monitor_loss_name,  # 监控的指标名
+            monitor=monitor_loss_name,  # Metric name to monitor
             dirpath=output_save_dir,
             filename="{epoch:03d}",
-            mode=monitor_mode,   # 监控模式（最大化或最小化）
+            mode=monitor_mode,   # Monitor mode (maximize or minimize)
             save_top_k=1,
         )
 
@@ -350,14 +350,14 @@ def main():
         callbacks = [checkpoint_callback, early_stopping_callback]
     elif args.train_stage == "train_final":
         checkpoint_callback = ModelCheckpoint(
-            monitor=monitor_loss_name,  # 监控训练集指标
+            monitor=monitor_loss_name,  # Monitor training-set metric
             dirpath=output_save_dir,
-            filename="{epoch:03d}",  # 文件名包含总epoch，便于识别
+            filename="{epoch:03d}",  # Filename includes epoch for identification
             mode=monitor_mode,
-            save_top_k=1,  # 仅保存最后一轮（或训练集最优）模型
-            save_last=True,  # 额外保存最后一轮模型（推荐，确保训练满epoch）
+            save_top_k=1,  # Save only last (or best train) model
+            save_last=True,  # Also save last-epoch model (recommended to ensure full epochs)
         )
-        callbacks = [checkpoint_callback]  # 无EarlyStopping
+        callbacks = [checkpoint_callback]  # No EarlyStopping
     
     ############## Learning and model set-up ##############
     gnn_args = copy.deepcopy(argsdict)
@@ -370,7 +370,7 @@ def main():
         out_path=output_save_dir,
     )
 
-    model = DartNet(**gnn_args)   #Python的“拆包”机制（**操作符），会自动匹配字典的键和模型中的参数名
+    model = DartNet(**gnn_args)   # Python ** unpacking matches dict keys to model constructor args
     print("model:", model)
     precision = "32"
 
@@ -379,12 +379,12 @@ def main():
         logger=logger,
         # min_epochs=10,
         # max_epochs=100,
-        # min_epochs=1 if args.train_stage != "train_final" else early_stopping_patience,  #最终训练固定epoch
+        # min_epochs=1 if args.train_stage != "train_final" else early_stopping_patience,  # Final training uses fixed epochs
         # max_epochs=100 if args.train_stage != "train_final" else early_stopping_patience,
-        min_epochs=1 if args.train_stage != "train_final" else fixed_epochs,  #最终训练固定epoch
+        min_epochs=1 if args.train_stage != "train_final" else fixed_epochs,  # Final training uses fixed epochs
         max_epochs=100 if args.train_stage != "train_final" else fixed_epochs,
-        # devices=1,  #gpu数量
-        devices=[gpu_devices],  #指定 GPU 编号
+        # devices=1,  # GPU count
+        devices=[gpu_devices],  # Specify GPU index
         check_val_every_n_epoch=1,
         num_sanity_val_steps=0,
         precision=precision,
@@ -429,7 +429,7 @@ def main():
         # Save test_set y_pred and y_true
         preds_path = os.path.join(output_save_dir, "test_y_pred.csv")
         # print("model.test_output:", model.test_output)
-        test_output_tensor = model.test_output[1]  # 获取键为1的张量
+        test_output_tensor = model.test_output[1]  # Get tensor for key 1
         if isinstance(test_output_tensor, torch.Tensor):
             if test_output_tensor.device.type != 'cpu':
                 test_output_np = test_output_tensor.cpu().numpy()
@@ -441,20 +441,20 @@ def main():
         # print("model.test_true:", model.test_true)
         true_path = os.path.join(output_save_dir, "test_y_true.csv")
         test_true_tensor = model.test_true[1]
-        if isinstance(test_true_tensor, torch.Tensor): # 若是张量，判断设备并转换
+        if isinstance(test_true_tensor, torch.Tensor): # If tensor, check device and convert
             if test_true_tensor.device.type != 'cpu':
                 test_true_np = test_true_tensor.cpu().numpy()
             else:
                 test_true_np = test_true_tensor.numpy()
-        else:   # 若已是NumPy数组，直接使用
+        else:   # Already a NumPy array; use directly
             test_true_np = test_true_tensor
             
-        # test_output_np = test_output_tensor.cpu().numpy() if test_output_tensor.device.type != 'cpu' else test_output_tensor.numpy()  ## 转换为 NumPy 数组（若在GPU上，需先移到CPU）
+        # test_output_np = test_output_tensor.cpu().numpy() if test_output_tensor.device.type != 'cpu' else test_output_tensor.numpy()  ## Convert to NumPy (move to CPU if on GPU)
         # test_true_np = test_true_tensor.cpu().numpy() if test_true_tensor.device.type != 'cpu' else test_true_tensor.numpy()
-        np.savetxt(preds_path, test_output_np, delimiter=",", fmt="%.6f")  # 预测值
-        np.savetxt(true_path, test_true_np, delimiter=",", fmt="%.6f")    # 真实值
+        np.savetxt(preds_path, test_output_np, delimiter=",", fmt="%.6f")  # Predictions
+        np.savetxt(true_path, test_true_np, delimiter=",", fmt="%.6f")    # Ground truth
     
-        # 定义测试集指标保存路径
+        # Define test-set metrics save path
         # print("model.test_metrics:", model.test_metrics)
         test_metrics_path = os.path.join(output_save_dir, "test_metrics.csv")
         save_classification_metrics(model.test_metrics, test_metrics_path, epoch_type="Test")
@@ -465,22 +465,22 @@ def main():
         # logger.experiment.save(test_metrics_path)
     
     
-    # 保存train_tune阶段的验证集指标
+    # Save validation metrics for train_tune stage
     if args.train_stage == "train_tune": 
-        # 训练结束后保存验证集指标
-        val_metrics_path = os.path.join(output_save_dir, "val_metrics_all_epochs.csv")  # 验证集指标路径（与测试集同目录）
+        # Save validation metrics after training
+        val_metrics_path = os.path.join(output_save_dir, "val_metrics_all_epochs.csv")  # Validation metrics path (same dir as test)
         # print("model.val_metrics:", model.val_metrics)
         save_classification_metrics_tra_val(model.val_metrics, val_metrics_path, epoch_type="Validation")
         
-        # 训练结束后保存验证-测试集指标
-        valtest_metrics_path = os.path.join(output_save_dir, "valtest_metrics_all_epochs.csv")  # 验证集指标路径（与测试集同目录）
+        # Save validation-test metrics after training
+        valtest_metrics_path = os.path.join(output_save_dir, "valtest_metrics_all_epochs.csv")  # Val-test metrics path (same dir as test)
         save_classification_metrics_tra_val(model.val_test_metrics, valtest_metrics_path, epoch_type="ValidationTest")
         
         # logger.experiment.save(val_metrics_path)
         # logger.experiment.save(valtest_metrics_path)
     
-    # 保存任何阶段的训练集指标
-    train_metrics_path = os.path.join(output_save_dir, "train_metrics_all_epochs.csv")  # 验证集指标路径（与测试集同目录）
+    # Save training-set metrics for any stage
+    train_metrics_path = os.path.join(output_save_dir, "train_metrics_all_epochs.csv")  # Train metrics path (same dir as test)
     save_classification_metrics_tra_val(model.train_metrics, train_metrics_path, epoch_type="Train")
         
     # wandb disabled — CSV / JSON already written to output_save_dir
