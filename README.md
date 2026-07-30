@@ -257,7 +257,7 @@ Without LFS / without a manual download, you only get a tiny pointer file, not t
 <a id="example-dataset-hcv"></a>
 ## 📊 Example dataset: HCV
 
-`dataset_HCV/` is a **demo target dataset** for GitHub, corresponding to DEL binary classification for the HCV IRES RNA target (split aligned with internal `data_S5_balanced_v1/split_1`).
+`dataset_HCV/` provides a target-specific DEL screening-derived binding dataset for the **HCV IRES Domain IIa** RNA target, enabling training and evaluation of a corresponding DARTnet model.
 
 ### Files
 
