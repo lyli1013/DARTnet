@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Experiment / logging
+wandb/
+experiments/logs/
+*.log
+nohup.out
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+*~
