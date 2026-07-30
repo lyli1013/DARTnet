@@ -86,7 +86,7 @@ nvcc --version
 
 > ❗ **Note:** The reference stack below is validated on Linux + **CUDA 12.1**. If your CUDA differs, change the PyTorch / PyG wheel URLs accordingly ([PyTorch](https://pytorch.org/get-started/previous-versions/), [PyG](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)).
 
-### 1️⃣ DARTnet environment (train / infer)
+### 1️⃣ DARTnet environment
 
 ```bash
 # 1) Create env
@@ -129,7 +129,7 @@ Quick check:
 python -c "import torch, torch_geometric, pytorch_lightning, rdkit, ogb; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-### 2️⃣ MolTran_CUDA11 environment (**optional**)
+### 2️⃣ MolTran_CUDA11 environment **(optional)**
 
 **Purpose:** generate MoLFormer embedding files (`*_emb.pt`) from SMILES.  
 **Skip if:** you use the precomputed embeddings in `dataset_HCV/` (`train_emb.pt` / `val_emb.pt` / `test_emb.pt`, plus inference `*_emb.pt`). Then only `DARTnet` is needed.  
