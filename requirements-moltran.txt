@@ -1,0 +1,11 @@
+# Pip deps for optional MolTran_CUDA11 env (validated against local MolTran_CUDA11).
+# Install torch / cudatoolkit / rdkit via conda FIRST (see README), then:
+#   pip install -r requirements-moltran.txt
+# Finally compile NVIDIA Apex from source (see README).
+
+transformers==4.6.0
+pytorch-lightning==1.1.5
+pytorch-fast-transformers==0.4.0
+datasets==1.6.2
+PyYAML==6.0.3
+tqdm==4.49.0

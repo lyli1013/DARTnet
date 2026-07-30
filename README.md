@@ -19,8 +19,8 @@ DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperfo
 
 - [🧬 Model architecture](#model-architecture)
 - [⚙️ Installation](#installation)
-- [📦 Pretrained models and external dependencies](#pretrained-models)
 - [📁 Repository structure](#repository-structure)
+- [📥 Download pretrained weights](#download-pretrained-weights)
 - [📊 Example dataset: HCV](#example-dataset-hcv)
 - [🧪 Data format and preprocessing](#data-format-and-preprocessing)
 - [🚀 Training](#training)
@@ -180,39 +180,6 @@ Bundled assets used by embedding generation:
 
 ---
 
-<a id="pretrained-models"></a>
-## 📦 Pretrained models and external dependencies
-
-### 📌 MoLFormer checkpoint
-
-**Optional** when using precomputed embeddings under `dataset_HCV/` (`train_emb.pt` / `val_emb.pt` / `test_emb.pt`, etc.).  
-**Required** only if you regenerate embeddings for new molecules.
-
-Default path:
-
-```text
-preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt
-```
-
-> ❗ **Note:** This `.ckpt` (~536 MB) is stored with **Git LFS**, not plain Git.  
-> Install [Git LFS](https://git-lfs.com) first, then clone (or run `git lfs pull` after clone).  
-> Without LFS you only get a tiny pointer file, not the real weights.
-
-```bash
-git lfs install
-git lfs pull
-```
-
-Or download from [IBM MoLFormer](https://github.com/IBM/molformer) and place it at the path above  
-(or pass a custom path):
-
-```bash
---molformer-ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt
---molformer-env MolTran_CUDA11
-```
-
----
-
 <a id="repository-structure"></a>
 ## 📁 Repository structure
 
@@ -226,13 +193,13 @@ DARTnet/
 │   ├── config.py               # Argument serialization / run directory naming
 │   └── efficient_kan.py        # KAN classification head
 ├── data_loading/               # Graph + Morgan + MoLFormer embedding pipeline
-├── preprocessing/              # MoLFormer embedding generation (subprocess orchestration)
+├── preprocessing/              # Embedding extraction + MoLFormer assets
+│   └── checkpoints/            # MoLFormer weights (Git LFS)
 ├── utils/                      # BatchRenorm, metrics, etc.
+├── requirements-moltran.txt    # pip deps for optional MolTran_CUDA11
 ├── dataset_HCV/                # Example target dataset (HCV IRES)
-├── experiments/                # Experiment launch scripts
-│   ├── train_cla2_final_version.sh
-│   └── logs/                   # Local logs (gitignored)
-├── train_cla2_final_version.sh # Symlink → experiments/
+├── outputs/                    # Example DARTnet checkpoint (HCV)
+├── train_cla2_final_version.sh # Example train / infer script
 └── README.md
 ```
 
@@ -243,6 +210,48 @@ git clone https://github.com/lyli1013/DARTnet.git
 cd DARTnet
 conda activate DARTnet
 ```
+
+---
+
+<a id="download-pretrained-weights"></a>
+## 📥 Download pretrained weights
+
+### 1️⃣ DARTnet model weights (~12 MB)
+
+Included in this repo (normal Git — **no LFS needed**):
+
+```text
+outputs/out_S5_dataset_HCV_final/<RUN_DIR>/last.ckpt
+```
+
+`<RUN_DIR>` =
+
+```text
+GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=256+GATH=2+GATD=0.9+BS=32+ESP=5+lr=0.0001_atteCat_embdrop0.1_fpdrop0.5_gnndrop0.0
+```
+
+Use `last.ckpt` as `--ckpt-path` for inference (keep `gnn_hyperparameters.json` in the same folder).
+
+### 2️⃣ MoLFormer checkpoint (~536 MB, **optional**)
+
+Needed only to **regenerate** embeddings for new molecules. Skip if you use precomputed `dataset_HCV/*_emb.pt`.
+
+```text
+preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt
+```
+
+Download options:
+
+1. **Git LFS** (after installing [Git LFS](https://git-lfs.com)):
+
+```bash
+git lfs install
+git lfs pull
+```
+
+2. **Browser:** open the file on GitHub and download manually, then place it at the path above.
+
+Without LFS / without a manual download, you only get a tiny pointer file, not the real weights.
 
 ---
 
