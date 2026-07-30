@@ -20,7 +20,7 @@ from preprocessing.extract_embeddings import (
     DEFAULT_MOLFORMER_ENV,
     ensure_embeddings,
 )
-from preprocessing.smiles_canonical import canonicalize_smiles_for_data
+from data_loading.smiles_canonical import canonicalize_smiles_for_data
 
 RDLogger.DisableLog("rdApp.*")
 

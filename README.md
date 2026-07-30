@@ -239,7 +239,7 @@ lsis-11,C12=C3C(=CC=C1OC(C2)CN(C)C)N=C([N]3CCCN(C)C)N([H])[H],CN(C)CCCn1c(N)nc2c
 
 ### SMILES canonicalization
 
-`data_loading` canonicalizes all input SMILES with RDKit (`preprocessing/smiles_canonical.py`) so GNN and Morgan fingerprints stay consistent.
+`data_loading` canonicalizes all input SMILES with RDKit (`data_loading/smiles_canonical.py`) so GNN and Morgan fingerprints stay consistent.
 
 > ⚠️ **Important:** If the directory contains **legacy** cached `.pt` files (generated before unified canonicalization), delete them and regenerate; otherwise train/infer features may be inconsistent:
 >
