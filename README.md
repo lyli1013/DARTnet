@@ -73,7 +73,7 @@ DARTnet uses **two Conda environments**:
 
 | Environment | Purpose |
 |-------------|---------|
-| `DARTnet` | Training / inference (graphs, Morgan fingerprints, model) |
+| `DARTnet` **(Required)** | Main environment for training and inference |
 | `MolTran_CUDA11` **(Optional)** | MoLFormer embedding extraction (subprocess) |
 
 Check CUDA first:
@@ -129,29 +129,54 @@ Quick check:
 python -c "import torch, torch_geometric, pytorch_lightning, rdkit, ogb; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-### 2️⃣ MolTran_CUDA11 environment (embedding extraction) — **optional**
+### 2️⃣ MolTran_CUDA11 environment (**optional**)
 
-> **You can skip this environment** if you use the **precomputed MoLFormer embeddings** shipped with the example dataset:
->
-> ```text
-> dataset_HCV/train_emb.pt
-> dataset_HCV/val_emb.pt
-> dataset_HCV/test_emb.pt
-> ```
->
-> (Inference CSVs also include matching `*_emb.pt` files, e.g. `S5_validated_test_set_1118_unique_20260129_emb.pt`.)  
-> With these files present, training/inference in the `DARTnet` env alone is enough — DARTnet will **not** call MolTran.
+**Purpose:** generate MoLFormer embedding files (`*_emb.pt`) from SMILES.  
+**Skip if:** you use the precomputed embeddings in `dataset_HCV/` (`train_emb.pt` / `val_emb.pt` / `test_emb.pt`, plus inference `*_emb.pt`). Then only `DARTnet` is needed.  
+**Install if:** you need embeddings for **new** SMILES / datasets (missing `*_emb.pt`).
 
-Install `MolTran_CUDA11` only when you need to **generate embeddings for new SMILES / new datasets** (missing `*_emb.pt`):
+Training/inference still runs in `DARTnet`. This env is only called as a subprocess when embeddings must be generated (`--molformer-env MolTran_CUDA11`).
 
-1. Create a Conda env named `MolTran_CUDA11` following [IBM MoLFormer](https://github.com/IBM/molformer) (Python 3.8 + older PyTorch / Lightning stack).
-2. Keep `DARTnet` as the active env for training/inference.
-3. Pass `--molformer-env MolTran_CUDA11` (and `--molformer-ckpt-path` if needed); `preprocessing/extract_embeddings.py` launches a subprocess in that env.
+```bash
+# 1) Create env (name must match --molformer-env, default: MolTran_CUDA11)
+conda create -n MolTran_CUDA11 python=3.8 -y
+conda activate MolTran_CUDA11
 
-Bundled assets for on-the-fly embedding generation:
+# 2) PyTorch 1.7.1 + CUDA 11.0
+conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch -y
+
+# 3) Scientific stack + RDKit
+conda install numpy=1.22.3 pandas=1.2.4 scikit-learn=0.24.2 scipy=1.6.2 -y
+conda install rdkit=2023.03.3 -c conda-forge -y
+
+# 4) Pip packages
+pip install -r requirements-moltran.txt
+
+# 5) Compile NVIDIA Apex from source (required by MoLFormer)
+git clone https://github.com/NVIDIA/apex
+cd apex
+git checkout tags/22.03 -b v22.03
+# Set CUDA_HOME to your CUDA 11 toolkit, e.g.:
+# export CUDA_HOME=/usr/local/cuda-11.0
+pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
+  --config-settings "--build-option=--cpp_ext" \
+  --config-settings "--build-option=--cuda_ext" ./
+cd ..
+```
+
+Quick check:
+
+```bash
+python -c "import torch, pytorch_lightning, transformers, rdkit, fast_transformers, apex; print(torch.__version__)"
+# expect: 1.7.1
+```
+
+Bundled assets used by embedding generation:
 
 - `preprocessing/molformer/` — MoLFormer inference code + `hparams.yaml`
-- `preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt` — pretrained weights (Git LFS)
+- `preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt` — weights (**Git LFS required**)
+
+> ❗ **Note:** Alternative / official reference: IBM MoLFormer [environment.md](https://github.com/IBM/molformer/blob/main/environment.md). The steps above match our validated `MolTran_CUDA11` stack (Python 3.8 + torch 1.7.1+cu110).
 
 ---
 
@@ -163,15 +188,18 @@ Bundled assets for on-the-fly embedding generation:
 **Optional** when using precomputed embeddings under `dataset_HCV/` (`train_emb.pt` / `val_emb.pt` / `test_emb.pt`, etc.).  
 **Required** only if you regenerate embeddings for new molecules.
 
-Default path (shipped in this repo via Git LFS):
+Default path:
 
 ```text
 preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt
 ```
 
-If the file is missing after clone, pull LFS objects:
+> ❗ **Note:** This `.ckpt` (~536 MB) is stored with **Git LFS**, not plain Git.  
+> Install [Git LFS](https://git-lfs.com) first, then clone (or run `git lfs pull` after clone).  
+> Without LFS you only get a tiny pointer file, not the real weights.
 
 ```bash
+git lfs install
 git lfs pull
 ```
 
