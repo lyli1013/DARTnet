@@ -316,21 +316,6 @@ HGODEL0034-240-32-159,CC(=O)N1CC(N(C)C(=O)C2(Cc3cccc(-c4noc(-c5ccc6ncn(C)c6c5)n4
 HGODEL0034-190-84-159,CC(=O)NC1CCN(C(=O)CCc2cccc(-c3noc(-c4ccc5ncn(C)c5c4)n3)c2)CC1,1
 ```
 
-### Inference CSV format
-
-Name the file `{infer_file_name}.csv` and place it under `--data-path`.
-
-At minimum include `FeatureIndex` and `Smiles`. Extra columns (e.g. `original_Smiles`, `Duplicate_FeatureIndex`) are allowed and ignored.
-
-Example (`S5_validated_test_set_1118_unique_20260129.csv`):
-
-```csv
-FeatureIndex,original_Smiles,Smiles,Duplicate_FeatureIndex
-lsis-11,C12=C3C(=CC=C1OC(C2)CN(C)C)N=C([N]3CCCN(C)C)N([H])[H],CN(C)CCCn1c(N)nc2ccc3c(c21)CC(CN(C)C)O3,Isis_11
-```
-
-> **Background:** This validation set is used to predict HCV IRES RNA binders for wet-lab MST follow-up. See the DARTnet paper for experimental details (citation to be updated upon publication).
-
 ---
 
 <a id="training"></a>
@@ -379,8 +364,19 @@ Only then pass these two arguments (same meaning as in `train_cla2_final_version
 MOLFORMER_CKPT="./preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt"
 MOLFORMER_ENV="MolTran_CUDA11"
 
+# Stage 1: train_tune
 python -m dartnet.train \
     --train_stage train_tune \
+    --dataset-dir ./dataset_HCV \
+    --dataset-id dataset_HCV \
+    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
+    --molformer-env "${MOLFORMER_ENV}" \
+    --out-path "${OUT}" \
+    --gpu-devices 0
+
+# Stage 2: train_final
+python -m dartnet.train \
+    --train_stage train_final \
     --dataset-dir ./dataset_HCV \
     --dataset-id dataset_HCV \
     --molformer-ckpt-path "${MOLFORMER_CKPT}" \
@@ -399,49 +395,21 @@ bash train_cla2_final_version.sh
 bash experiments/train_cla2_final_version.sh
 ```
 
-### Output directory naming
-
-The run directory name is auto-built from hyperparameters (`get_gnn_wandb_name`). Default c603:
-
-```
-GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=256+GATH=2+GATD=0.9+BS=32+ESP=5+lr=0.0001_atteCat_embdrop0.1_fpdrop0.5_gnndrop0.0
-```
-
-Example paths:
-
-```
-output/dataset_HCV/<RUN_DIR>/          # train_tune checkpoints + metrics
-output/dataset_HCV_final/<RUN_DIR>/    # train_final checkpoints + test metrics
-```
-
-### Main CLI arguments
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--train_stage` | (required) | `train_tune` or `train_final` |
-| `--dataset-dir` | — | Dataset folder containing CSVs |
-| `--dataset-id` | `split_1` | Identifier used in logs / metric filenames |
-| `--molformer-ckpt-path` | — | MoLFormer weights; **only if** `*_emb.pt` are missing |
-| `--molformer-env` | `MolTran_CUDA11` | MolTran conda env; **only if** embeddings must be generated |
-| `--out-path` | — | Output root directory |
-| `--gpu-devices` | `2` | GPU device index |
-| `--seed` | `42` | Random seed |
-| `--batch-size` | `32` | Batch size |
-| `--lr` | `1e-4` | Learning rate |
-| `--early-stopping-patience` | `5` | Early-stopping patience (tune only) |
-
-List all arguments:
-
-```bash
-python -m dartnet.train --help
-```
-
 ---
 
 <a id="inference"></a>
 ## 🔮 Inference
 
 Use the checkpoint from `train_final` to score new SMILES.
+
+### Input CSV
+
+Place `{infer_file_name}.csv` under `--data-path`. Required columns: `FeatureIndex`, `Smiles`.
+
+```csv
+FeatureIndex,Smiles
+lsis-11,CN(C)CCCn1c(N)nc2ccc3c(c21)CC(CN(C)C)O3
+```
 
 ### ▶️ Example command
 
@@ -458,7 +426,8 @@ python -m dartnet.predict \
     --data-path ./dataset_HCV \
     --infer-file-name S5_validated_test_set_1118_unique_20260129 \
     --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
-    --use-gpu
+    --use-gpu \
+    --gpu-devices 0
 ```
 
 #### Optional: missing `{infer_file_name}_emb.pt`
@@ -477,7 +446,8 @@ python -m dartnet.predict \
     --molformer-ckpt-path "${MOLFORMER_CKPT}" \
     --molformer-env "${MOLFORMER_ENV}" \
     --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
-    --use-gpu
+    --use-gpu \
+    --gpu-devices 0
 ```
 
 Or run inference via `bash train_cla2_final_version.sh` (edit `MOLFORMER_*` / infer file names there if needed).
@@ -496,8 +466,6 @@ where `{N_pos}` is the number of samples with predicted probability > 0.5. Colum
 |--------|-------------|
 | `ID` | Sample `FeatureIndex` |
 | `Prediction` | Binding probability (sigmoid, 0–1) |
-
-> **Note:** In `dartnet/predict.py`, `Trainer(devices=[...])` may hard-code a GPU index. Edit the `devices` list if it does not match your machine.
 
 ---
 
