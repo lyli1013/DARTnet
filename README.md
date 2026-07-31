@@ -26,7 +26,7 @@ DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperfo
 - [🔮 Inference](#inference)
 - [📚 Citation and acknowledgements](#citation-and-acknowledgements)
 - [☎️ Contact us](#contact-us)
-- [⚠️ Disclaimer](#disclaimer)
+- [📄 Copyright and License](#copyright-and-license)
 
 ---
 
@@ -502,7 +502,14 @@ Please contact us if you are interested in our work or potential academic collab
 
 ---
 
-<a id="disclaimer"></a>
+<a id="copyright-and-license"></a>
+## 📄 Copyright and License
+
+This project is free to use for non-commercial purposes - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<!-- <a id="disclaimer"></a>
 ## ⚠️ Disclaimer
 
-Predictions from DARTnet are for computational decision support only and **do not replace** wet-lab validation. Please have experts review results before MST, cellular assays, or other follow-up experiments. This software is provided "as is", and the authors are not liable for any loss arising from its use.
+Predictions from DARTnet are for computational decision support only and **do not replace** wet-lab validation. Please have experts review results before MST, cellular assays, or other follow-up experiments. This software is provided "as is", and the authors are not liable for any loss arising from its use. -->
