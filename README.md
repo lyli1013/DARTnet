@@ -345,7 +345,7 @@ DARTnet uses a **two-stage training** strategy:
 
 ### ▶️ Quick start (HCV example)
 
-`dataset_HCV/` already includes precomputed `*_emb.pt`, so **MolTran is not required** and you can omit `--molformer-ckpt-path` / `--molformer-env`. Those flags are only needed when embeddings must be generated for new SMILES / datasets.
+`dataset_HCV/` already includes precomputed `*_emb.pt`, so **MolTran is not required** for the default HCV run.
 
 ```bash
 cd DARTnet
@@ -370,12 +370,33 @@ python -m dartnet.train \
     --gpu-devices 0
 ```
 
-Or use the wrapper script (edit paths / `MOLFORMER_*` only if you need to regenerate embeddings):
+#### Optional: generate embeddings (new SMILES / missing `*_emb.pt`)
+
+Only then pass these two arguments (same meaning as in `train_cla2_final_version.sh`):
 
 ```bash
-bash experiments/train_cla2_final_version.sh
-# or
+# MoLFormer weights (bundled; Git LFS) and MolTran conda env name
+MOLFORMER_CKPT="./preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt"
+MOLFORMER_ENV="MolTran_CUDA11"
+
+python -m dartnet.train \
+    --train_stage train_tune \
+    --dataset-dir ./dataset_HCV \
+    --dataset-id dataset_HCV \
+    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
+    --molformer-env "${MOLFORMER_ENV}" \
+    --out-path "${OUT}" \
+    --gpu-devices 0
+```
+
+#### Or run the wrapper script
+
+Edit I/O paths (and `MOLFORMER_CKPT` / `MOLFORMER_ENV` if regenerating embeddings), then:
+
+```bash
 bash train_cla2_final_version.sh
+# or
+bash experiments/train_cla2_final_version.sh
 ```
 
 ### Output directory naming
@@ -424,7 +445,7 @@ Use the checkpoint from `train_final` to score new SMILES.
 
 ### ▶️ Example command
 
-Precomputed `{infer_file_name}_emb.pt` is enough; omit MolFormer flags unless that file is missing.
+HCV example files already ship with `{infer_file_name}_emb.pt` → **no MolTran needed**.
 
 ```bash
 conda activate DARTnet
@@ -439,6 +460,27 @@ python -m dartnet.predict \
     --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
     --use-gpu
 ```
+
+#### Optional: missing `{infer_file_name}_emb.pt`
+
+Add the same two flags as in training / `train_cla2_final_version.sh`:
+
+```bash
+MOLFORMER_CKPT="./preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt"
+MOLFORMER_ENV="MolTran_CUDA11"
+
+python -m dartnet.predict \
+    --infer \
+    --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
+    --data-path ./dataset_HCV \
+    --infer-file-name YOUR_NEW_FILE \
+    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
+    --molformer-env "${MOLFORMER_ENV}" \
+    --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
+    --use-gpu
+```
+
+Or run inference via `bash train_cla2_final_version.sh` (edit `MOLFORMER_*` / infer file names there if needed).
 
 ### Output
 
