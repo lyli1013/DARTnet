@@ -34,7 +34,7 @@ DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA ta
 ## 🧬 Model architecture
 
 <p align="center">
-  <img src="Fig/model_architecture.png" alt="DARTnet model architecture" width="100%">
+  <img src="Fig/model_architecture.png" alt="DARTnet model architecture" width="700">
 </p>
 <p align="center"><b>DARTnet model architecture</b></p>
 
