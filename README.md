@@ -345,11 +345,12 @@ DARTnet uses a **two-stage training** strategy:
 
 ### ▶️ Quick start (HCV example)
 
+`dataset_HCV/` already includes precomputed `*_emb.pt`, so **MolTran is not required** and you can omit `--molformer-ckpt-path` / `--molformer-env`. Those flags are only needed when embeddings must be generated for new SMILES / datasets.
+
 ```bash
 cd DARTnet
 conda activate DARTnet
 
-export MOLFORMER_CKPT="/path/to/N-Step-Checkpoint_3_30000.ckpt"
 export OUT="./output/dataset_HCV"
 
 # Stage 1: train_tune
@@ -357,8 +358,6 @@ python -m dartnet.train \
     --train_stage train_tune \
     --dataset-dir ./dataset_HCV \
     --dataset-id dataset_HCV \
-    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
-    --molformer-env MolTran_CUDA11 \
     --out-path "${OUT}" \
     --gpu-devices 0
 
@@ -367,13 +366,11 @@ python -m dartnet.train \
     --train_stage train_final \
     --dataset-dir ./dataset_HCV \
     --dataset-id dataset_HCV \
-    --molformer-ckpt-path "${MOLFORMER_CKPT}" \
-    --molformer-env MolTran_CUDA11 \
     --out-path "${OUT}" \
     --gpu-devices 0
 ```
 
-Or use the wrapper script (edit `MOLFORMER_CKPT` and output paths first):
+Or use the wrapper script (edit paths / `MOLFORMER_*` only if you need to regenerate embeddings):
 
 ```bash
 bash experiments/train_cla2_final_version.sh
@@ -403,8 +400,8 @@ output/dataset_HCV_final/<RUN_DIR>/    # train_final checkpoints + test metrics
 | `--train_stage` | (required) | `train_tune` or `train_final` |
 | `--dataset-dir` | — | Dataset folder containing CSVs |
 | `--dataset-id` | `split_1` | Identifier used in logs / metric filenames |
-| `--molformer-ckpt-path` | — | MoLFormer weights (required when using emb) |
-| `--molformer-env` | `MolTran_CUDA11` | Conda env for embedding subprocess |
+| `--molformer-ckpt-path` | — | MoLFormer weights; **only if** `*_emb.pt` are missing |
+| `--molformer-env` | `MolTran_CUDA11` | MolTran conda env; **only if** embeddings must be generated |
 | `--out-path` | — | Output root directory |
 | `--gpu-devices` | `2` | GPU device index |
 | `--seed` | `42` | Random seed |
@@ -427,6 +424,8 @@ Use the checkpoint from `train_final` to score new SMILES.
 
 ### ▶️ Example command
 
+Precomputed `{infer_file_name}_emb.pt` is enough; omit MolFormer flags unless that file is missing.
+
 ```bash
 conda activate DARTnet
 
@@ -437,8 +436,6 @@ python -m dartnet.predict \
     --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
     --data-path ./dataset_HCV \
     --infer-file-name S5_validated_test_set_1118_unique_20260129 \
-    --molformer-ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt \
-    --molformer-env MolTran_CUDA11 \
     --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
     --use-gpu
 ```
