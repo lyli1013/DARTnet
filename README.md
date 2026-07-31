@@ -33,29 +33,12 @@ DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA ta
 <a id="model-architecture"></a>
 ## 🧬 Model architecture
 
+DARTnet encodes each molecule with three complementary views—**molecular graph** (GAT), **Morgan fingerprint**, and **MoLFormer SMILES embedding**—then fuses them via a **hybrid module** (attention gating + cross-modal interaction). A KAN head outputs the RNA–small-molecule binding probability.
+
 <p align="center">
   <img src="Fig/model_architecture.png" alt="DARTnet model architecture" width="100%">
 </p>
 <p align="center"><b>DARTnet model architecture</b></p>
-
-DARTnet (c603) uses a fixed multimodal architecture (`graph+fp+emb` + `cross_interact` + `atteCat`):
-
-```
-SMILES
-  ├─► Molecular graph (x, edge_index, edge_attr)
-  │     └─► Node MLP (79→256) → Edge MLP (13→13)
-  │           └─► 4× [GAT → BatchRenorm → Mish] + residual projection
-  │                 └─► Global mean pool → LayerNorm  →  f_GNN [256]
-  ├─► Morgan2048 fingerprint (ECFP4, radius=2)
-  │     └─► MLP → f_FP [256]
-  └─► MoLFormer embedding
-        └─► MLPemb → f_EMB [100]
-
-Hybrid multimodal fusion (atteCat)
-  ├─ Gated multimodal fusion branch      → 456-d
-  └─ Cross-modal interaction branch      → 3×48 = 144-d
-        └─ Concatenate → 600-d → KAN head → sigmoid → P(bind)
-```
 
 ---
 
