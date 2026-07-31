@@ -33,6 +33,11 @@ DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA ta
 <a id="model-architecture"></a>
 ## 🧬 Model architecture
 
+<p align="center">
+  <img src="Fig/model_architecture.png" alt="DARTnet model architecture" width="100%">
+</p>
+<p align="center"><b>DARTnet model architecture</b></p>
+
 DARTnet (c603) uses a fixed multimodal architecture (`graph+fp+emb` + `cross_interact` + `atteCat`):
 
 ```
@@ -51,16 +56,6 @@ Hybrid multimodal fusion (atteCat)
   └─ Cross-modal interaction branch      → 3×48 = 144-d
         └─ Concatenate → 600-d → KAN head → sigmoid → P(bind)
 ```
-
-| Module | Description |
-|--------|-------------|
-| GNN backbone | 4-layer GAT (2 heads, dropout=0.9) with edge features and skip-add residual |
-| Fingerprint branch | Morgan ECFP4 (2048 bits), MLP projection to 256-d |
-| Embedding branch | MoLFormer pretrained checkpoint for SMILES embeddings; MLPemb to 100-d |
-| Fusion module | Hybrid multimodal fusion (gated + cross-modal branches) |
-| Classification head | Efficient KAN (grid=5, hidden=64) + binary BCE |
-
-> Run all commands from the **project root**: `python -m dartnet.train` / `python -m dartnet.predict`.
 
 ---
 
