@@ -17,7 +17,7 @@ DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA ta
 
 ## 📖 Table of contents
 
-- [🧬 Model architecture](#model-architecture)
+<!-- - [🧬 Model architecture](#model-architecture) -->
 - [⚙️ Installation](#installation)
 - [📁 Repository structure](#repository-structure)
 - [📥 Download pretrained weights](#download-pretrained-weights)
@@ -30,6 +30,7 @@ DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA ta
 
 ---
 
+<!--
 <a id="model-architecture"></a>
 ## 🧬 Model architecture
 
@@ -40,6 +41,7 @@ DARTnet encodes each molecule with three complementary views—**molecular graph
 </p>
 <p align="center"><b>DARTnet model architecture</b></p>
 
+-->
 ---
 
 <a id="installation"></a>
