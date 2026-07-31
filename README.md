@@ -22,7 +22,6 @@ DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperfo
 - [📁 Repository structure](#repository-structure)
 - [📥 Download pretrained weights](#download-pretrained-weights)
 - [📊 Example dataset: HCV](#example-dataset-hcv)
-- [🧪 Data format and preprocessing](#data-format-and-preprocessing)
 - [🚀 Training](#training)
 - [🔮 Inference](#inference)
 - [📚 Citation and acknowledgements](#citation-and-acknowledgements)
@@ -136,30 +135,47 @@ python -c "import torch, torch_geometric, pytorch_lightning, rdkit, ogb; print(t
 
 Training/inference still runs in `DARTnet`. This env is only called as a subprocess when embeddings must be generated (`--molformer-env MolTran_CUDA11`).
 
+**Prerequisites (host):**
+
+- NVIDIA driver compatible with CUDA 11.0 wheels
+- A CUDA 11-compatible host compiler for building `pytorch-fast-transformers` and Apex. On Ubuntu 20.04+, install **gcc-8 / g++-8** (recommended):
+
+```bash
+sudo apt-get update && sudo apt-get install -y gcc-8 g++-8
+```
+
+If your default `gcc` is already ≤9 and builds succeed, you may omit the `CC`/`CXX` exports in step 4.
+
 ```bash
 # 1) Create env (name must match --molformer-env, default: MolTran_CUDA11)
 conda create -n MolTran_CUDA11 python=3.8 -y
 conda activate MolTran_CUDA11
 
-# 2) PyTorch 1.7.1 + CUDA 11.0
-conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch -y
+# 2) CUDA 11.0 toolkit + PyTorch 1.7.1 (pip cu110 wheels)
+# Note: conda torchvision==0.8.2 + cudatoolkit=11.0 is currently unsatisfiable.
+# cudatoolkit-dev provides nvcc (needed to compile fast-transformers / Apex).
+conda install cudatoolkit=11.0 cudatoolkit-dev=11.0.3 -c conda-forge -y
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 \
+  -f https://download.pytorch.org/whl/torch_stable.html
 
 # 3) Scientific stack + RDKit
 conda install numpy=1.22.3 pandas=1.2.4 scikit-learn=0.24.2 scipy=1.6.2 -y
 conda install rdkit=2023.03.3 -c conda-forge -y
 
-# 4) Pip packages
+# 4) Pip packages (pin pip<24.1 so datasets==1.6.2 metadata is accepted)
+# Use the env's nvcc; if system gcc is too new for CUDA 11.0, point to gcc-8/g++-8.
+export CUDA_HOME="$CONDA_PREFIX"
+export CC=gcc-8 CXX=g++-8 CUDAHOSTCXX=g++-8   # omit if default gcc works
+pip install "pip<24.1"
 pip install -r requirements-moltran.txt
 
 # 5) Compile NVIDIA Apex from source (required by MoLFormer)
 git clone https://github.com/NVIDIA/apex
 cd apex
 git checkout tags/22.03 -b v22.03
-# Set CUDA_HOME to your CUDA 11 toolkit, e.g.:
-# export CUDA_HOME=/usr/local/cuda-11.0
+# Keep CUDA_HOME / CC / CXX from step 4
 pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
-  --config-settings "--build-option=--cpp_ext" \
-  --config-settings "--build-option=--cuda_ext" ./
+  --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 cd ..
 ```
 
@@ -176,6 +192,17 @@ Bundled assets used by embedding generation:
 - `preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt` — weights (**Git LFS required**)
 
 > ❗ **Note:** Alternative / official reference: IBM MoLFormer [environment.md](https://github.com/IBM/molformer/blob/main/environment.md). The steps above match our validated `MolTran_CUDA11` stack (Python 3.8 + torch 1.7.1+cu110).
+
+**Common failures (steps 4–5):**
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `gcc-8: command not found` | Host compiler missing | Install `gcc-8` / `g++-8`, or point `CC`/`CXX` to another CUDA-11-compatible GCC |
+| `nvcc` / CUDA version mismatch, or compile against system CUDA 12 | Wrong toolkit on `PATH` | `conda activate` first, then `export CUDA_HOME="$CONDA_PREFIX"` (use env `nvcc`, not `/usr/bin/nvcc`) |
+| `pytorch-fast-transformers` / Apex build fails with GCC too new | Host GCC ≥10–11 with CUDA 11.0 | Force `export CC=gcc-8 CXX=g++-8 CUDAHOSTCXX=g++-8` |
+| `datasets==1.6.2` pip metadata error | pip ≥24.1 | `pip install "pip<24.1"` then retry |
+| Slow / appears stuck on `cudatoolkit-dev` | Large download + unpack | Wait; needs network access to conda-forge |
+| Cannot fetch `torch==1.7.1+cu110` or clone Apex | Network / firewall | Retry with working access to PyTorch wheels and GitHub |
 
 ---
 
@@ -261,15 +288,15 @@ Without LFS / without a manual download, you only get a tiny pointer file, not t
 
 ### Files
 
-| File | Description | Approx. size |
-|------|-------------|--------------|
-| `train_set.csv` | Training set | 1,709 |
-| `val_set.csv` | Validation set | 408 |
-| `test_set.csv` | Test set | 507 |
-| `train_emb.pt` / `val_emb.pt` / `test_emb.pt` | **Precomputed** MoLFormer embeddings (skip MolTran) | — |
-| `S5_validated_test_set_1118_unique*.csv` | Wet-lab validated molecules (inference) | 18 |
-| `S5_*_emb.pt` | Precomputed embeddings for the inference CSVs | — |
-| `FDA_smiles_2349_20251022.csv` | FDA-approved drug SMILES (optional screening) | 2,349 |
+| File | Description |
+|------|-------------|
+| `train_set.csv` | Training set |
+| `val_set.csv` | Validation set |
+| `test_set.csv` | Test set |
+| `train_emb.pt` / `val_emb.pt` / `test_emb.pt` | **Precomputed** MoLFormer embeddings (skip MolTran) |
+| `S5_validated_test_set_1118_unique*.csv` | Wet-lab validated molecules (inference) |
+| `S5_*_emb.pt` | Precomputed embeddings for the inference CSVs |
+| `FDA_smiles_2349_20251022.csv` | FDA-approved drug SMILES (optional screening) |
 
 ### Training CSV format
 
@@ -303,51 +330,6 @@ lsis-11,C12=C3C(=CC=C1OC(C2)CN(C)C)N=C([N]3CCCN(C)C)N([H])[H],CN(C)CCCn1c(N)nc2c
 ```
 
 > **Background:** This validation set is used to predict HCV IRES RNA binders for wet-lab MST follow-up. See the DARTnet paper for experimental details (citation to be updated upon publication).
-
----
-
-<a id="data-format-and-preprocessing"></a>
-## 🧪 Data format and preprocessing
-
-### SMILES canonicalization
-
-`data_loading` canonicalizes all input SMILES with RDKit (`data_loading/smiles_canonical.py`) so GNN and Morgan fingerprints stay consistent.
-
-> ⚠️ **Important:** If the directory contains **legacy** cached `.pt` files (generated before unified canonicalization), delete them and regenerate; otherwise train/infer features may be inconsistent:
->
-> ```bash
-> rm -f dataset_HCV/DEL_*_morgan2048_emb.pt
-> rm -f dataset_HCV/*_emb.pt
-> rm -f dataset_HCV/S5_*_morgan2048_emb.pt
-> ```
-
-### Automatic feature caching
-
-On the first training or inference run, the pipeline will:
-
-1. Read CSV → build PyG molecular graphs (node/edge features)
-2. Compute Morgan2048 fingerprints in parallel
-3. Generate MoLFormer embeddings via `MolTran_CUDA11` (if `*_emb.pt` is missing)
-4. Cache full features as `.pt` files for faster subsequent runs
-
-| Source CSV | Cached files |
-|------------|--------------|
-| `train_set.csv` | `DEL_train_Label_morgan2048_emb.pt` + `train_emb.pt` |
-| `val_set.csv` | `DEL_val_Label_morgan2048_emb.pt` + `val_emb.pt` |
-| `test_set.csv` | `DEL_test_Label_morgan2048_emb.pt` + `test_emb.pt` |
-| `{infer_file_name}.csv` | `{infer_file_name}_morgan2048_emb.pt` + `{infer_file_name}_emb.pt` |
-
-### Standalone embedding extraction (optional)
-
-```bash
-python preprocessing/extract_embeddings.py \
-    --data-dir ./dataset_HCV \
-    --ckpt-path /path/to/N-Step-Checkpoint_3_30000.ckpt \
-    --molformer-env MolTran_CUDA11 \
-    --device cuda:0
-```
-
-See [`preprocessing/README.md`](preprocessing/README.md) for more details.
 
 ---
 
