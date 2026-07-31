@@ -274,9 +274,9 @@ Without LFS / without a manual download, you only get a tiny pointer file, not t
 | `val_set.csv` | Validation set |
 | `test_set.csv` | Test set |
 | `train_emb.pt` / `val_emb.pt` / `test_emb.pt` | **Precomputed** MoLFormer embeddings (skip MolTran) |
-| `S5_validated_test_set_1118_unique*.csv` | Wet-lab validated molecules (inference) |
-| `S5_*_emb.pt` | Precomputed embeddings for the inference CSVs |
-| `FDA_smiles_2349_20251022.csv` | FDA-approved drug SMILES (optional screening) |
+| `DEL_train_Label_morgan2048_emb.pt` | Cached train graphs + Morgan2048 (+ emb) features |
+| `DEL_val_Label_morgan2048_emb.pt` | Cached val graphs + Morgan2048 (+ emb) features |
+| `DEL_test_Label_morgan2048_emb.pt` | Cached test graphs + Morgan2048 (+ emb) features |
 
 ### Training CSV format
 
