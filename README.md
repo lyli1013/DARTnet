@@ -4,11 +4,11 @@ This is a [PyTorch](https://pytorch.org/) / [PyTorch Geometric](https://pytorch-
 
 ## 🎯 DARTnet: DEL-informed Artificial Intelligence for RNA-Targeted molecule discovery
 
-RNA molecules represent an emerging class of therapeutic targets, but discovering small molecules that selectively recognize structured RNAs remains challenging. The lack of large-scale, target-specific RNA–small molecule interaction data limits the ability of computational methods to learn RNA-specific chemical preferences.
+RNA molecules are promising therapeutic targets, but the discovery of RNA-targeted small molecules is limited by the lack of large-scale, target-specific interaction data.
 
-DARTnet is a DEL-informed deep learning framework for RNA-targeted small-molecule discovery. By learning target-specific chemical preferences from DNA-encoded library (DEL) screening-derived enrichment signals, DARTnet predicts RNA–small molecule binding probabilities and prioritizes high-confidence candidates from large chemical libraries. DARTnet integrates complementary molecular representations, including Morgan fingerprints, molecular graphs, and pretrained SMILES embeddings, through a hybrid multimodal fusion architecture combining attention-based modality gating and cross-modal feature interaction. A Kolmogorov–Arnold Network (KAN) prediction head is further used to model complex nonlinear relationships between molecular features and RNA-binding probability.
+DARTnet is **an experimental–computational framework** that transforms DNA-encoded library (DEL) screening-derived enrichment signals into a DEL-informed deep learning model for learning RNA target-specific chemical preferences. By integrating **molecular graphs, molecular fingerprints, and pretrained SMILES embeddings** through **a hybrid multimodal fusion architecture** with attention-based gating and cross-modal interaction, DARTnet predicts RNA–small molecule binding probabilities and prioritizes high-confidence candidates from chemical libraries.
 
-DARTnet was benchmarked on the HCV IRES Domain IIa RNA target, where it outperformed existing computational approaches and achieved a 70% experimental validation rate among high-confidence predictions using microscale thermophoresis (MST). DARTnet was further applied to disease-associated structured RNA targets, including coronavirus SL5 RNA elements, KRAS 5′UTR G-quadruplexes, and the PLEC S3E-1 structural splicing enhancer. The identified compounds showed strong binding activity and functional effects in reporter assays, cancer cell models, patient-derived organoids, and mouse models, demonstrating the potential of DARTnet for discovering functional small-molecule modulators of challenging RNA targets.
+DARTnet achieved **a 70% MST validation rate** on the HCV IRES Domain IIa RNA target and enabled the discovery of functional small-molecule modulators across diverse structured RNA targets, including **structurally conserved coronavirus SL5 elements, KRAS rG4**, and **the PLEC S3E-1 splicing enhancer**.
 
 <p align="center">
   <img src="Fig/overview.png" alt="Overview of DARTnet workflow" width="100%">
@@ -284,7 +284,7 @@ Without LFS / without a manual download, you only get a tiny pointer file, not t
 <a id="example-dataset-hcv"></a>
 ## 📊 Example dataset: HCV
 
-`dataset_HCV/` provides a target-specific DEL screening-derived binding dataset for the **HCV IRES Domain IIa** RNA target, enabling training and evaluation of a corresponding DARTnet model.
+`dataset_HCV/` provides a target-specific DEL screening-derived binding dataset for the **HCV IRES Domain IIa** RNA target, enabling training and evaluation of a DARTnet model for this target.
 
 ### Files
 
