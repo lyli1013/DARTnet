@@ -398,7 +398,7 @@ lsis-11,CN(C)CCCn1c(N)nc2ccc3c(c21)CC(CN(C)C)O3
 
 ### ▶️ Example command
 
-HCV example files already ship with `{infer_file_name}_emb.pt` → **no MolTran needed**.
+HCV example files already ship with `{infer_file_name}_emb.pt`, so **MolTran is not required** for the default HCV run.
 
 ```bash
 conda activate DARTnet
@@ -409,17 +409,18 @@ python -m dartnet.predict \
     --infer \
     --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
     --data-path ./dataset_HCV \
-    --infer-file-name S5_validated_test_set_1118_unique_20260129 \
+    --infer-file-name HCV_screened_positive \
     --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
     --use-gpu \
     --gpu-devices 0
 ```
 
-#### Optional: missing `{infer_file_name}_emb.pt`
+#### Optional: generate embeddings (new SMILES / missing `*_emb.pt`)
 
-Add the same two flags as in training / `HCV_train_infer_moltran.sh`:
+Only then pass these two arguments (same meaning as in `HCV_train_infer_moltran.sh`):
 
 ```bash
+# MoLFormer weights (bundled; Git LFS) and MolTran conda env name
 MOLFORMER_CKPT="./preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt"
 MOLFORMER_ENV="MolTran_CUDA11"
 
@@ -440,14 +441,14 @@ python -m dartnet.predict \
 Besides the command lines above, inference is also included in the HCV shell scripts (after training):
 
 ```bash
-# Precomputed infer embeddings (no MolTran)
+# Precomputed embeddings under dataset_HCV/ (recommended default; no MolTran)
 bash HCV_train_infer.sh
 
-# Generate missing infer *_emb.pt via MolTran_CUDA11
+# Missing *_emb.pt: generate embeddings via MolTran_CUDA11
 bash HCV_train_infer_moltran.sh
 ```
 
-Edit infer file names / `GPU_DEVICES` / `MOLFORMER_*` inside the script if needed.
+Edit GPU / paths / infer file names inside the script if needed (`GPU_DEVICES`, `MOLFORMER_*` in the MolTran variant).
 
 ### Output
 
