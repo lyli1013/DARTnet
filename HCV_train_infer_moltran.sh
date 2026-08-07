@@ -51,14 +51,14 @@ for id in "${data_id[@]}"; do
 done
 echo "train_final: all jobs submitted"
 
-# ---------- infer: HCV_positive ----------
+# ---------- infer: HCV_screened_positive ----------
 for id in "${data_id[@]}"; do
     out_final="${OUTPUT_ROOT}/out_S5_${id}_final"
     nohup python -m dartnet.predict \
         --infer \
         --ckpt-path "${out_final}/${RUN_DIR}/last.ckpt" \
         --dataset-dir "${PROJECT_ROOT}/${id}" \
-        --infer-file-name HCV_positive \
+        --infer-file-name HCV_screened_positive \
         --output-path "${out_final}/${RUN_DIR}" \
         --use-gpu \
         --gpu-devices "${GPU_DEVICES}" \
@@ -69,14 +69,14 @@ for id in "${data_id[@]}"; do
 done
 echo "infer HCV_positive: all jobs submitted"
 
-# ---------- infer: HCV_negative ----------
+# ---------- infer: HCV_screened_negative ----------
 for id in "${data_id[@]}"; do
     out_final="${OUTPUT_ROOT}/out_S5_${id}_final"
     nohup python -m dartnet.predict \
         --infer \
         --ckpt-path "${out_final}/${RUN_DIR}/last.ckpt" \
         --dataset-dir "${PROJECT_ROOT}/${id}" \
-        --infer-file-name HCV_negative \
+        --infer-file-name HCV_screened_negative \
         --output-path "${out_final}/${RUN_DIR}" \
         --use-gpu \
         --gpu-devices "${GPU_DEVICES}" \

@@ -10,7 +10,7 @@ venv/
 
 # Experiment / logging
 wandb/
-experiments/logs/
+experiments/
 *.log
 nohup.out
 
