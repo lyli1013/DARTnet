@@ -205,7 +205,8 @@ DARTnet/
 ├── requirements-moltran.txt    # pip deps for optional MolTran_CUDA11
 ├── dataset_HCV/                # Example target dataset (HCV IRES)
 ├── outputs/                    # Example DARTnet checkpoint (HCV)
-├── train_cla2_final_version.sh # Example train / infer script
+├── HCV_train_infer.sh          # HCV train+infer (precomputed *_emb.pt; no MolTran)
+├── HCV_train_infer_moltran.sh  # HCV train+infer (generate missing emb via MolTran)
 └── README.md
 ```
 
@@ -337,7 +338,7 @@ python -m dartnet.train \
 
 #### Optional: generate embeddings (new SMILES / missing `*_emb.pt`)
 
-Only then pass these two arguments (same meaning as in `train_cla2_final_version.sh`):
+Only then pass these two arguments (same meaning as in `HCV_train_infer_moltran.sh`):
 
 ```bash
 # MoLFormer weights (bundled; Git LFS) and MolTran conda env name
@@ -365,15 +366,19 @@ python -m dartnet.train \
     --gpu-devices 0
 ```
 
-#### Or run the wrapper script
+#### Or run the shell script
 
-Edit I/O paths (and `MOLFORMER_CKPT` / `MOLFORMER_ENV` if regenerating embeddings), then:
+Besides the command lines above, you can run the full HCV pipeline (`train_tune` → `train_final` → infer) with:
 
 ```bash
-bash train_cla2_final_version.sh
-# or
-bash experiments/train_cla2_final_version.sh
+# Precomputed embeddings under dataset_HCV/ (recommended default; no MolTran)
+bash HCV_train_infer.sh
+
+# Missing *_emb.pt: generate embeddings via MolTran_CUDA11
+bash HCV_train_infer_moltran.sh
 ```
+
+Edit GPU / paths / infer file names inside the script if needed (`GPU_DEVICES`, `MOLFORMER_*` in the MolTran variant).
 
 ---
 
@@ -412,7 +417,7 @@ python -m dartnet.predict \
 
 #### Optional: missing `{infer_file_name}_emb.pt`
 
-Add the same two flags as in training / `train_cla2_final_version.sh`:
+Add the same two flags as in training / `HCV_train_infer_moltran.sh`:
 
 ```bash
 MOLFORMER_CKPT="./preprocessing/checkpoints/N-Step-Checkpoint_3_30000.ckpt"
@@ -430,7 +435,19 @@ python -m dartnet.predict \
     --gpu-devices 0
 ```
 
-Or run inference via `bash train_cla2_final_version.sh` (edit `MOLFORMER_*` / infer file names there if needed).
+#### Or run the shell script
+
+Besides the command lines above, inference is also included in the HCV shell scripts (after training):
+
+```bash
+# Precomputed infer embeddings (no MolTran)
+bash HCV_train_infer.sh
+
+# Generate missing infer *_emb.pt via MolTran_CUDA11
+bash HCV_train_infer_moltran.sh
+```
+
+Edit infer file names / `GPU_DEVICES` / `MOLFORMER_*` inside the script if needed.
 
 ### Output
 
