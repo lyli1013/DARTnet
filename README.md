@@ -389,7 +389,7 @@ Use the checkpoint from `train_final` to score new SMILES.
 
 ### Input CSV
 
-Place `{infer_file_name}.csv` under `--data-path`. Required columns: `FeatureIndex`, `Smiles`.
+Place `{infer_file_name}.csv` under `--dataset-dir`. Required columns: `FeatureIndex`, `Smiles`.
 
 ```csv
 FeatureIndex,Smiles
@@ -400,6 +400,8 @@ lsis-11,CN(C)CCCn1c(N)nc2ccc3c(c21)CC(CN(C)C)O3
 
 HCV example files already ship with `{infer_file_name}_emb.pt`, so **MolTran is not required** for the default HCV run.
 
+The example below uses the **bundled** checkpoint under `outputs/out_S5_dataset_HCV_final/` (see [Download pretrained weights](#download-pretrained-weights)). After you run Training yourself, point `--ckpt-path` / `--output-path` to your own `${OUT}_final/${RUN_DIR}/` instead.
+
 ```bash
 conda activate DARTnet
 
@@ -407,10 +409,10 @@ RUN_DIR="GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=
 
 python -m dartnet.predict \
     --infer \
-    --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
-    --data-path ./dataset_HCV \
+    --ckpt-path "./outputs/out_S5_dataset_HCV_final/${RUN_DIR}/last.ckpt" \
+    --dataset-dir ./dataset_HCV \
     --infer-file-name HCV_screened_positive \
-    --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
+    --output-path "./outputs/out_S5_dataset_HCV_final/${RUN_DIR}" \
     --use-gpu \
     --gpu-devices 0
 ```
@@ -426,12 +428,12 @@ MOLFORMER_ENV="MolTran_CUDA11"
 
 python -m dartnet.predict \
     --infer \
-    --ckpt-path "./output/dataset_HCV_final/${RUN_DIR}/last.ckpt" \
-    --data-path ./dataset_HCV \
+    --ckpt-path "./outputs/out_S5_dataset_HCV_final/${RUN_DIR}/last.ckpt" \
+    --dataset-dir ./dataset_HCV \
     --infer-file-name YOUR_NEW_FILE \
     --molformer-ckpt-path "${MOLFORMER_CKPT}" \
     --molformer-env "${MOLFORMER_ENV}" \
-    --output-path "./output/dataset_HCV_final/${RUN_DIR}" \
+    --output-path "./outputs/out_S5_dataset_HCV_final/${RUN_DIR}" \
     --use-gpu \
     --gpu-devices 0
 ```
