@@ -223,7 +223,7 @@ conda activate DARTnet
 <a id="download-pretrained-weights"></a>
 ## 📥 Download pretrained weights
 
-### 1️⃣ DARTnet model weights (~12 MB)
+### 1️⃣ DARTnet model weights (<100 MB)
 
 Included in this repo (normal Git — **no LFS needed**):
 
@@ -275,9 +275,9 @@ Without LFS / without a manual download, you only get a tiny pointer file, not t
 | `val_set.csv` | Validation set |
 | `test_set.csv` | Test set |
 | `train_emb.pt` / `val_emb.pt` / `test_emb.pt` | **Precomputed** MoLFormer embeddings (skip MolTran) |
-| `DEL_train_Label_morgan2048_emb.pt` | Cached train graphs + Morgan2048 (+ emb) features |
-| `DEL_val_Label_morgan2048_emb.pt` | Cached val graphs + Morgan2048 (+ emb) features |
-| `DEL_test_Label_morgan2048_emb.pt` | Cached test graphs + Morgan2048 (+ emb) features |
+| `DEL_train_Label_morgan2048_emb.pt` | Cached training-set multimodal features |
+| `DEL_val_Label_morgan2048_emb.pt` | Cached validation-set multimodal features |
+| `DEL_test_Label_morgan2048_emb.pt` | Cached test-set multimodal features |
 
 ### Training CSV format
 
@@ -306,8 +306,8 @@ DARTnet uses a **two-stage training** strategy:
 
 | Stage | `--train_stage` | Description |
 |-------|-----------------|-------------|
-| Tuning | `train_tune` | train/val split, early stopping, monitor **Validation PRAUC** |
-| Final model | `train_final` | Merge train + val; fixed epoch count (from the best tune checkpoint epoch) |
+| Tuning | `train_tune` | Train on train set; early stop on validation set |
+| Final model | `train_final` | Merge train+val; train for a fixed number of epochs |
 
 ### ▶️ Quick start (HCV example)
 
@@ -458,12 +458,12 @@ Predictions are written to:
 {output-path}/infer/predictions_{infer_file_name}_({N_pos}).csv
 ```
 
-where `{N_pos}` is the number of samples with predicted probability > 0.5. Columns:
+<!-- where `{N_pos}` is the number of samples with predicted probability > 0.5. Columns:
 
 | Column | Description |
 |--------|-------------|
 | `ID` | Sample `FeatureIndex` |
-| `Prediction` | Binding probability (sigmoid, 0–1) |
+| `Prediction` | Binding probability (sigmoid, 0–1) | -->
 
 ---
 
@@ -487,7 +487,7 @@ GitHub: https://github.com/lyli1013/DARTnet
 
 - [IBM MoLFormer](https://github.com/IBM/molformer) — chemical language model used for SMILES embeddings
 - [PyTorch Geometric](https://github.com/pyg-team/pytorch_geometric) — molecular graph neural networks
-- [EfficientKAN](https://github.com/Blealtan/efficient-kan) — Kolmogorov–Arnold Network implementation used in the classification head
+<!-- - [EfficientKAN](https://github.com/Blealtan/efficient-kan) — Kolmogorov–Arnold Network implementation used in the classification head -->
 
 ---
 
