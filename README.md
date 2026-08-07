@@ -205,8 +205,8 @@ DARTnet/
 ├── requirements-moltran.txt    # pip deps for optional MolTran_CUDA11
 ├── dataset_HCV/                # Example target dataset (HCV IRES)
 ├── outputs/                    # Example DARTnet checkpoint (HCV)
-├── HCV_train_infer.sh          # HCV train+infer (precomputed *_emb.pt; no MolTran)
-├── HCV_train_infer_moltran.sh  # HCV train+infer (generate missing emb via MolTran)
+├── HCV_train_infer.sh          # Example HCV train+infer (precomputed *_emb.pt; no MolTran)
+├── HCV_train_infer_moltran.sh  # Example HCV train+infer (generate missing emb via MolTran)
 └── README.md
 ```
 
@@ -368,7 +368,7 @@ python -m dartnet.train \
 
 #### Or run the shell script
 
-Besides the command lines above, you can run the full HCV pipeline (`train_tune` → `train_final` → infer) with:
+Besides the command lines above, you can run the full HCV pipeline (`train_tune` → `train_final` → infer) with the example scripts at the repository root:
 
 ```bash
 # Precomputed embeddings under dataset_HCV/ (recommended default; no MolTran)
@@ -438,7 +438,7 @@ python -m dartnet.predict \
 
 #### Or run the shell script
 
-Besides the command lines above, inference is also included in the HCV shell scripts (after training):
+Besides the command lines above, inference is also included in the repository-root HCV scripts (after training):
 
 ```bash
 # Precomputed embeddings under dataset_HCV/ (recommended default; no MolTran)
