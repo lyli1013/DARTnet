@@ -76,17 +76,23 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--infer", action='store_true', help='Inference mode')
     parser.add_argument("--ckpt-path", type=str, required=True, help="Model checkpoint path")
-    parser.add_argument("--data-path", type=str, required=True, help="Path to data for prediction")
+    parser.add_argument("--dataset-dir", type=str, required=True, help="Path to data for prediction")
     parser.add_argument("--infer-file-name", type=str, required=True, help="Inference file name")
     parser.add_argument("--output-path", type=str, default="./predictions", help="Path to save prediction results")
     parser.add_argument("--batch-size", type=int, default=32, help="Prediction batch size")
     parser.add_argument("--use-gpu", action="store_true", help="Whether to use GPU for prediction")
+    parser.add_argument(
+        "--gpu-devices",
+        type=int,
+        default=2,
+        help="GPU index when --use-gpu is set (same meaning as dartnet.train --gpu-devices)",
+    )
     parser.add_argument("--fingerprint-type", type=str, default="morgan2048")
     parser.add_argument(
         "--molformer-ckpt-path",
         type=str,
-        required=True,
-        help="MolFormer pretrained checkpoint; embeddings are generated in data-path if missing",
+        default=None,
+        help="MolFormer checkpoint; only needed if {infer}_emb.pt is missing and must be generated",
     )
     parser.add_argument(
         "--molformer-hparams-path",
@@ -98,7 +104,7 @@ def main():
         "--molformer-env",
         type=str,
         default="MolTran_CUDA11",
-        help="Conda env for MolFormer embedding extraction (subprocess)",
+        help="Conda env for embedding subprocess; only used if embeddings are missing",
     )
 
     args = parser.parse_args()
@@ -120,7 +126,7 @@ def main():
     test_data, num_classes, task_type, scaler = get_dataset_train_val_test(
         infer=args.infer,
         dataset=dataset,
-        dataset_dir=args.data_path,
+        dataset_dir=args.dataset_dir,
         infer_file_name=args.infer_file_name,
         one_hot=argsdict["dataset_one_hot"],
         target_name=argsdict["dataset_target_name"],
@@ -134,7 +140,7 @@ def main():
         molformer_ckpt_path=args.molformer_ckpt_path,
         molformer_hparams_path=args.molformer_hparams_path,
         molformer_env=args.molformer_env,
-        gpu_devices=0 if args.use_gpu else None,
+        gpu_devices=args.gpu_devices if args.use_gpu else None,
     )
     
     # print("type(test_data)", type(test_data))
@@ -179,12 +185,14 @@ def main():
         "enable_progress_bar": True,  # Show progress bar
         "enable_model_summary": True,  # Show model summary
         "max_epochs": 1,  # Inference needs only one epoch
-        "accelerator": "auto",  # Auto-select accelerator
-        # "devices": "auto" if args.use_gpu else 1,  # Choose device based on use_gpu
-        # "devices": 1,# GPU count
-        "devices": [2],  # Specify GPU index
         "callbacks": [TQDMProgressBar(refresh_rate=10)],  # Progress bar callback
     }
+    if args.use_gpu:
+        trainer_kwargs["accelerator"] = "gpu"
+        trainer_kwargs["devices"] = [args.gpu_devices]
+    else:
+        trainer_kwargs["accelerator"] = "cpu"
+        trainer_kwargs["devices"] = 1
 
     trainer = Trainer(**trainer_kwargs)
 

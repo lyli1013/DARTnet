@@ -128,7 +128,7 @@ def main():
         "--molformer-ckpt-path",
         type=str,
         default=None,
-        help="MolFormer pretrained checkpoint; embeddings are generated in dataset-dir if missing",
+        help="MolFormer checkpoint; only needed if *_emb.pt files are missing and must be generated",
     )
     parser.add_argument(
         "--molformer-hparams-path",
@@ -140,7 +140,7 @@ def main():
         "--molformer-env",
         type=str,
         default="MolTran_CUDA11",
-        help="Conda env for MolFormer embedding extraction (subprocess)",
+        help="Conda env for embedding subprocess; only used if *_emb.pt files are missing",
     )
     # emb arguments
     parser.add_argument("--emb-feat-dim-out", type=int, default=100)
@@ -156,12 +156,7 @@ def main():
     parser.add_argument("--kan-reg-activation-weight", type=float, default=1.0)
     parser.add_argument("--kan-reg-entropy-weight", type=float, default=1.0)
     parser.add_argument("--kan-reg-use", default=True, action=argparse.BooleanOptionalAction)
-    parser.add_argument(
-        "--cross-dim",
-        type=int,
-        default=48,
-        help="Projection dim for cross_interact pairwise features (c603 default)",
-    )
+    parser.add_argument("--cross-dim", type=int, default=48, help="Projection dim for cross_interact pairwise features (c603 default)")
     
     # GNN arguments (c603 defaults)
     parser.add_argument("--output-node-dim", type=int, default=256)
@@ -174,12 +169,7 @@ def main():
     # Learning hyperparameters (c603 defaults)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument(
-        "--monitor-loss-name",
-        type=str,
-        default=None,
-        help="If unset: Validation PRAUC for train_tune, train_loss for train_final",
-    )
+    parser.add_argument("--monitor-loss-name", type=str, default=None, help="If unset: Validation PRAUC for train_tune, train_loss for train_final")
     parser.add_argument("--gradient-clip-val", type=float, default=0.5)
     parser.add_argument("--optimiser-weight-decay", type=float, default=1e-10)
     parser.add_argument("--early-stopping-patience", type=int, default=5)
@@ -195,9 +185,7 @@ def main():
 
     # Stage-dependent monitor default (c603)
     if args.monitor_loss_name is None:
-        args.monitor_loss_name = (
-            "Validation PRAUC" if args.train_stage == "train_tune" else "train_loss"
-        )
+        args.monitor_loss_name = ("Validation PRAUC" if args.train_stage == "train_tune" else "train_loss")
     
     if args.config_json_path:
         argsdict = load_gnn_arguments_from_json(args.config_json_path)
@@ -244,10 +232,8 @@ def main():
     if dataset == "DEL":
         assert target_name is not None, "A target must be specified for DEL!"
 
-    if "emb" in argsdict["dataset_mode"] and not molformer_ckpt_path:
-        raise ValueError(
-            "dataset_mode includes 'emb' but --molformer-ckpt-path was not provided."
-        )
+    # --molformer-ckpt-path / --molformer-env are optional when precomputed *_emb.pt exist.
+    # Missing embeddings are generated on demand (see ensure_embeddings).
 
     argsdict["kan_reg_config"] = {
         "use_regularization": argsdict.get("kan_reg_use", True),
@@ -377,13 +363,8 @@ def main():
     trainer_args = dict(
         callbacks=callbacks,
         logger=logger,
-        # min_epochs=10,
-        # max_epochs=100,
-        # min_epochs=1 if args.train_stage != "train_final" else early_stopping_patience,  # Final training uses fixed epochs
-        # max_epochs=100 if args.train_stage != "train_final" else early_stopping_patience,
         min_epochs=1 if args.train_stage != "train_final" else fixed_epochs,  # Final training uses fixed epochs
         max_epochs=100 if args.train_stage != "train_final" else fixed_epochs,
-        # devices=1,  # GPU count
         devices=[gpu_devices],  # Specify GPU index
         check_val_every_n_epoch=1,
         num_sanity_val_steps=0,
@@ -398,7 +379,7 @@ def main():
 
     if args.train_stage == "train_tune":
         trainer.fit(
-            model=model, train_dataloaders=train_loader, val_dataloaders=[val_loader, test_loader], ckpt_path=ckpt_path
+            model=model, train_dataloaders=train_loader, val_dataloaders=[val_loader, val_loader], ckpt_path=ckpt_path
         )
         
         
