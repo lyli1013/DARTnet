@@ -1,0 +1,11 @@
+FeatureIndex,Name,Synonyms,CAS Number,Smiles,Binding probability
+DB11475,Tylosin,,1401-69-0,CC[C@H]1OC(=O)C[C@@H](O)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)[C@@H](O[C@H]3C[C@@](C)(O)[C@@H](O)[C@H](C)O3)[C@@H]([C@H]2O)N(C)C)[C@@H](CC=O)C[C@@H](C)C(=O)\C=C\C(\C)=C\[C@@H]1CO[C@@H]1O[C@H](C)[C@@H](O)[C@@H](OC)[C@H]1OC,3.2e-05
+DB13060,CEP-37440,,1391712-60-9,CNC(=O)C1=CC=CC=C1NC1=C(Cl)C=NC(NC2=CC=C3C[C@H](CCCC3=C2OC)N2CCN(CCO)CC2)=N1,8e-06
+HY-128922,Dexamethasone palmitate,DXP,14899-36-6,C[C@@]12[C@](C[C@@H](C)[C@]2(O)C(COC(CCCCCCCCCCCCCCC)=O)=O)([H])[C@@]3([H])[C@@](F)([C@@]4(C(CC3)=CC(C=C4)=O)C)[C@@H](O)C1,2.5e-05
+HY-13897,CNX-2006,,1375465-09-0,C=CC(NC1=CC=CC(NC2=NC(NC3=CC=C(NC4CN(CCF)C4)C=C3OC)=NC=C2C(F)(F)F)=C1)=O,2.1e-05
+HY-B1484,Moxalactam (sodium salt),Latamoxef (sodium); Lamoxactam (sodium); LY-127935 (sodium),64953-12-4,O=C(C(N12)=C(CSC3=NN=NN3C)CO[C@]2([H])[C@](OC)(NC(C(C(O[Na])=O)C4=CC=C(O)C=C4)=O)C1=O)O[Na],1.3e-05
+HY-B0670A,Dihydroergotamine (mesylate),,6190-39-2,O[C@@]([C@@](CCC1)([H])N1C2=O)(O[C@](NC([C@@H](CN(C)[C@]3([H])C4)C[C@]3([H])C5=C6C4=CNC6=CC=C5)=O)(C)C7=O)N7[C@H]2CC8=CC=CC=C8.CS(=O)(O)=O,1.6e-05
+HY-50877,GSK461364,GSK461364A,929095-18-1,O=C(C(SC(N1C=NC2=CC=C(C=C12)CN3CCN(CC3)C)=C4)=C4O[C@@H](C5=CC=CC=C5C(F)(F)F)C)N,1.7e-05
+HY-15832,GSK 2830371,,1404456-53-6,ClC1=CN=C(C)C(NCC2=CC=C(C(N[C@@H](CC3CCCC3)C(NC4CC4)=O)=O)S2)=C1,1.7e-05
+DB00663,Flumethasone,,2135-17-3,[H][C@@]12C[C@@H](C)[C@](O)(C(=O)CO)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C,5.4e-05
+HY-15459,Cabazitaxel,XRP6258; RPR-116258A; taxoid XRP6258,183133-96-2,CC1=C([C@@H](OC)C([C@@]2(C)[C@@]3([H])[C@](OC(C)=O)(CO4)[C@H]4C[C@@H]2OC)=O)C(C)(C)[C@@]([C@H]3OC(C5=CC=CC=C5)=O)(O)C[C@@H]1OC([C@H](O)[C@H](C6=CC=CC=C6)NC(OC(C)(C)C)=O)=O,8.3e-05
