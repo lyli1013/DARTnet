@@ -15,7 +15,7 @@ GPU_DEVICES="${GPU_DEVICES:-0}"   # same meaning as --gpu-devices in train / pre
 cd "${PROJECT_ROOT}"
 mkdir -p "${OUTPUT_ROOT}" "${LOG_ROOT}"
 
-data_id=(dataset_HCV2)
+data_id=(dataset_HCV)
 # Must match get_gnn_wandb_name() with train.py c603 defaults
 RUN_DIR="GNN+DEL+T=Label+S=42+GAT+GC=0.5+OPTD=1e-10+OH=True+NDIM=256+NL=4+GIDIM=256+GATH=2+GATD=0.9+BS=32+ESP=5+lr=0.0001_atteCat_embdrop0.1_fpdrop0.5_gnndrop0.0"
 
